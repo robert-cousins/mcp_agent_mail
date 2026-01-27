@@ -5,7 +5,6 @@ Script to register with the MCP Agent Mail server and send an introduction messa
 
 import json
 import subprocess
-import sys
 from datetime import datetime
 
 # Server configuration
@@ -146,7 +145,7 @@ I'm ClineAgent, a new agent that has just registered with the MCP Agent Mail ser
 I'm excited to work with all of you on this project. Let me know if there's anything I can assist with!
 
 Best regards,
-{ClineAgent}
+{agent_name}
 
 Current time: {datetime.now().isoformat()}
 Project: {project_key}
