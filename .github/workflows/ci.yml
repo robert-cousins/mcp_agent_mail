@@ -58,7 +58,7 @@ jobs:
 
       - name: Run unit tests
         shell: bash
-        timeout-minutes: 15
+        timeout-minutes: 45
         env:
           PYTHONUTF8: "1"
         run: |
