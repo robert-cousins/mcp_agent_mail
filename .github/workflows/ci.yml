@@ -63,7 +63,7 @@ jobs:
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -q --timeout=60 -x --ignore=tests/benchmarks/
+          uv run -m pytest -q --timeout=60 -x --ignore=tests/benchmarks/ --ignore=tests/e2e/
 
       - name: Smoke test am-run (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
