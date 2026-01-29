@@ -19,11 +19,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.14
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
-          allow-prereleases: true
+          python-version: '3.12'
 
       - name: Install uv
         shell: bash
@@ -59,11 +58,11 @@ jobs:
 
       - name: Run unit tests
         shell: bash
-        timeout-minutes: 20
+        timeout-minutes: 15
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -q --timeout=60 --ignore=tests/benchmarks/ --ignore=tests/e2e/ --ignore=tests/integration/
+          uv run -m pytest -vv --maxfail=3 --durations=25 --timeout=60 --timeout-method=thread --ignore=tests/benchmarks/ --ignore=tests/e2e/ --ignore=tests/integration/
 
       - name: Run e2e and integration tests (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
@@ -72,7 +71,7 @@ jobs:
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest tests/e2e/ tests/integration/ -q --timeout=120
+          uv run -m pytest tests/e2e/ tests/integration/ -vv --maxfail=3 --durations=25 --timeout=120 --timeout-method=thread
 
       - name: Smoke test am-run (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
