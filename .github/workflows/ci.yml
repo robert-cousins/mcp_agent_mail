@@ -57,13 +57,22 @@ jobs:
         run: |
           uvx ty check
 
-      - name: Run tests
+      - name: Run unit tests
+        shell: bash
+        timeout-minutes: 20
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          uv run -m pytest -q --timeout=60 --ignore=tests/benchmarks/ --ignore=tests/e2e/ --ignore=tests/integration/
+
+      - name: Run e2e and integration tests (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         timeout-minutes: 10
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -q --timeout=60 --ignore=tests/benchmarks/
+          uv run -m pytest tests/e2e/ tests/integration/ -q --timeout=120
 
       - name: Smoke test am-run (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
