@@ -12,16 +12,16 @@ async def test_tooling_resources_and_recent(isolated_env):
     async with Client(server) as client:
         await client.call_tool("health_check", {})
         # directory
-        d = await client.read_resource("resource://tooling/directory")
+        d = await client.read_resource("resource://tooling/directory?format=json")
         assert d and "metrics" in (d[0].text or "")
         # metrics
-        m = await client.read_resource("resource://tooling/metrics")
+        m = await client.read_resource("resource://tooling/metrics?format=json")
         assert m and "health_check" in (m[0].text or "")
         # capabilities for unknown agent -> []
-        c = await client.read_resource("resource://tooling/capabilities/Someone")
+        c = await client.read_resource("resource://tooling/capabilities/Someone?format=json")
         assert c and "[]" in (c[0].text or "[]")
         # recent window
-        r = await client.read_resource("resource://tooling/recent/5")
+        r = await client.read_resource("resource://tooling/recent/5?format=json")
         assert r and "tool" in (r[0].text or "")
 
 

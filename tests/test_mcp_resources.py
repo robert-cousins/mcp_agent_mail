@@ -67,7 +67,7 @@ async def test_project_resource_returns_project_details(isolated_env):
         agent_name = agent_result.data["name"]
 
         # Read project resource
-        blocks = await client.read_resource("resource://project/projresource")
+        blocks = await client.read_resource("resource://project/projresource?format=json")
         data = parse_resource_json(blocks)
 
         assert data is not None, "Project resource should return JSON"
@@ -90,7 +90,7 @@ async def test_project_resource_with_human_key(isolated_env):
     async with Client(server) as client:
         await client.call_tool("ensure_project", {"human_key": "/projhk"})
 
-        blocks = await client.read_resource("resource://project/projhk")
+        blocks = await client.read_resource("resource://project/projhk?format=json")
         data = parse_resource_json(blocks)
 
         assert data is not None, "Should return project data"
@@ -132,7 +132,7 @@ async def test_agents_resource_returns_agent_list(isolated_env):
         )
 
         # Read agents directory
-        blocks = await client.read_resource("resource://agents/agentsres")
+        blocks = await client.read_resource("resource://agents/agentsres?format=json")
         data = parse_resource_json(blocks)
 
         assert data is not None, "Agents resource should return JSON"
@@ -186,7 +186,7 @@ async def test_agents_resource_shows_unread_count(isolated_env):
             )
 
         # Check unread count
-        blocks = await client.read_resource("resource://agents/agentsunread")
+        blocks = await client.read_resource("resource://agents/agentsunread?format=json")
         data = parse_resource_json(blocks)
 
         assert data is not None
@@ -562,7 +562,7 @@ async def test_file_reservations_resource_returns_reservations(isolated_env):
         )
 
         # Read file reservations resource
-        blocks = await client.read_resource("resource://file_reservations/fileres")
+        blocks = await client.read_resource("resource://file_reservations/fileres?format=json")
         data = parse_resource_json(blocks)
 
         assert data is not None, "File reservations resource should return JSON"
@@ -656,7 +656,7 @@ async def test_file_reservations_resource_includes_metadata(isolated_env):
             },
         )
 
-        blocks = await client.read_resource("resource://file_reservations/filemeta")
+        blocks = await client.read_resource("resource://file_reservations/filemeta?format=json")
         data = parse_resource_json(blocks)
 
         assert data is not None
@@ -679,7 +679,7 @@ async def test_project_resource_nonexistent_returns_error(isolated_env):
     server = build_mcp_server()
     async with Client(server) as client:
         try:
-            await client.read_resource("resource://project/nonexistent-project-xyz")
+            await client.read_resource("resource://project/nonexistent-project-xyz?format=json")
             # If it doesn't raise, check for error in response
             pytest.fail("Should raise error for nonexistent project")
         except Exception as e:
@@ -706,7 +706,7 @@ async def test_inbox_resource_requires_project(isolated_env):
 
         try:
             # Without project parameter, should fail or require clarification
-            await client.read_resource("resource://inbox/BlueLake")
+            await client.read_resource("resource://inbox/BlueLake?format=json")
             # May succeed if auto-detection works, or fail
         except Exception as e:
             # Expected - ambiguous agent requires project
