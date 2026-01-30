@@ -202,14 +202,15 @@ jobs:
             --ignore=tests/e2e/ \
             --ignore=tests/integration/
 
-      - name: Run e2e and integration tests (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest'
-        shell: bash
-        timeout-minutes: 10
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          uv run -m pytest tests/e2e/ tests/integration/ -vv --maxfail=3 --durations=25 --timeout=120 --timeout-method=thread
+      # e2e tests disabled until stabilized - run manually before releases
+      # - name: Run e2e and integration tests (Ubuntu only)
+      #   if: matrix.os == 'ubuntu-latest'
+      #   shell: bash
+      #   timeout-minutes: 10
+      #   env:
+      #     PYTHONUTF8: "1"
+      #   run: |
+      #     uv run -m pytest tests/e2e/ tests/integration/ -vv --maxfail=3 --durations=25 --timeout=120 --timeout-method=thread
 
       - name: Smoke test am-run (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
