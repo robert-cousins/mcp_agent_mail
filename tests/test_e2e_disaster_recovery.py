@@ -35,6 +35,8 @@ from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.config import get_settings
 from mcp_agent_mail.db import get_session
 
+pytestmark = pytest.mark.slow
+
 # ============================================================================
 # Test fixtures and helpers
 # ============================================================================

@@ -27,6 +27,8 @@ from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import build_http_app
 from tests._http_helpers import http_test_client
 
+pytestmark = pytest.mark.http
+
 
 def _rpc(method: str, params: dict) -> dict:
     """Create a JSON-RPC 2.0 request."""

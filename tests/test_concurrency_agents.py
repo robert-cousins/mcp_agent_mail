@@ -32,6 +32,8 @@ from sqlalchemy import text
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.db import ensure_schema, get_session
 
+pytestmark = pytest.mark.slow
+
 # ============================================================================
 # Helper functions
 # ============================================================================

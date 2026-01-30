@@ -3,12 +3,15 @@ from __future__ import annotations
 import contextlib
 import sys
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.db import ensure_schema
 from mcp_agent_mail.http import build_http_app, main as http_main
+
+pytestmark = pytest.mark.http
 
 
 def test_http_main_invokes_uvicorn(monkeypatch):

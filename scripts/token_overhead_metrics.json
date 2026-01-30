@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-01-29T18:12:04Z",
+  "tools": {
+    "tool_count": 6,
+    "total_bytes": 4044,
+    "estimated_tokens": 1011,
+    "description_chars": 604,
+    "description_tokens": 151,
+    "schema_chars": 2585,
+    "latency_ms": 7.38,
+    "tools": [
+      "health_check",
+      "ensure_project",
+      "register_agent",
+      "send_message",
+      "fetch_inbox",
+      "acknowledge_message"
+    ]
+  },
+  "workflow": {
+    "total_latency_ms": 109.86,
+    "call_count": 3,
+    "avg_latency_ms": 36.62,
+    "breakdown": {
+      "ensure_project": 24.64,
+      "register_agent": 60.97,
+      "fetch_inbox": 24.25
+    }
+  }
+}
