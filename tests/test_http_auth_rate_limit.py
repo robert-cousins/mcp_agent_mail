@@ -1,11 +1,11 @@
 import contextlib
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import build_http_app
+from tests._http_helpers import http_test_client
 
 
 def _rpc(method: str, params: dict) -> dict:
@@ -31,8 +31,7 @@ async def test_http_jwt_rbac_and_rate_limit(monkeypatch):
     server = build_mcp_server()
     app = build_http_app(settings, server)
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         # Without auth => 401
         r = await client.post(settings.http.path, json=_rpc("tools/call", {"name": "health_check", "arguments": {}}))
         assert r.status_code == 401
@@ -62,4 +61,3 @@ async def test_http_jwt_rbac_and_rate_limit(monkeypatch):
         assert r1.status_code == 200
         r2 = await client.post(settings.http.path, headers=headers, json=_rpc("tools/call", {"name": "health_check", "arguments": {}}))
         assert r2.status_code == 429
-

@@ -940,8 +940,8 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         for task in tasks:
             task.cancel()
         for task in tasks:
-            with contextlib.suppress(Exception):
-                await task
+            with contextlib.suppress(BaseException):
+                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
 
     from contextlib import asynccontextmanager
 
@@ -1090,21 +1090,23 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     async def oauth_meta_root_mcp() -> JSONResponse:
         return JSONResponse({"mcp_oauth": False})
 
-    # A minimal stateless ASGI adapter that does not rely on ASGI lifespan management
-    # and runs a fresh StreamableHTTP transport per request.
-    from mcp.server.streamable_http import StreamableHTTPServerTransport
+    # Thin ASGI wrapper that fixes Accept/Content-Type headers before delegating
+    # to the SDK's built-in Starlette MCP app.  The SDK's
+    # StreamableHTTPSessionManager correctly synchronises per-request
+    # transports via task_group.start(), avoiding the zero-buffer
+    # memory-stream deadlock that occurred when StatelessMCPASGIApp called
+    # _mcp_server.run() directly (bypassing the lifespan manager).
+    class _MCPHeaderFixupApp:
+        """Ensure Accept / Content-Type headers before forwarding to mcp_http_app."""
 
-    class StatelessMCPASGIApp:
-        def __init__(self, mcp_server) -> None:
-            self._server = mcp_server
+        def __init__(self, inner_app: Any) -> None:
+            self._app = inner_app
 
         async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
             if scope.get("type") != "http":
-                res = JSONResponse({"detail": "Not Found"}, status_code=404)
-                await res(scope, receive, send)
+                await self._app(scope, receive, send)
                 return
 
-            # Ensure Accept and Content-Type headers are present per StreamableHTTP expectations
             headers = list(scope.get("headers") or [])
 
             def _has_header(key: bytes) -> bool:
@@ -1118,33 +1120,11 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 headers.append((b"content-type", b"application/json"))
             new_scope = dict(scope)
             new_scope["headers"] = headers
-
-            http_transport = StreamableHTTPServerTransport(
-                mcp_session_id=None,
-                is_json_response_enabled=True,
-                event_store=None,
-                security_settings=None,
-            )
-
-            async with http_transport.connect() as streams:
-                read_stream, write_stream = streams
-                server_task = asyncio.create_task(
-                    self._server._mcp_server.run(
-                        read_stream,
-                        write_stream,
-                        self._server._mcp_server.create_initialization_options(),
-                        stateless=True,
-                    )
-                )
-                # No response wrapping/unwrapping - just pass through MCP responses as-is
-                # MCP clients can handle JSON-RPC format properly
-                try:
-                    await http_transport.handle_request(new_scope, receive, send)
-                finally:
-                    with contextlib.suppress(Exception):
-                        await http_transport.terminate()
-                    with contextlib.suppress(Exception):
-                        await server_task
+            # Normalise empty path to "/" so the SDK's Starlette route matches
+            # (Starlette Mount strips the prefix, yielding "" for exact matches)
+            if not new_scope.get("path"):
+                new_scope["path"] = "/"
+            await self._app(new_scope, receive, send)
 
     # Mount at both '/base' and '/base/' to tolerate either form from clients/tests
     mount_base = settings.http.path or "/mcp"
@@ -1152,7 +1132,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         mount_base = "/" + mount_base
     base_no_slash = mount_base.rstrip("/") or "/"
     base_with_slash = base_no_slash if base_no_slash == "/" else base_no_slash + "/"
-    stateless_app = StatelessMCPASGIApp(server)
+    stateless_app = _MCPHeaderFixupApp(mcp_http_app)
     with contextlib.suppress(Exception):
         fastapi_app.mount(base_no_slash, stateless_app)
     with contextlib.suppress(Exception):
@@ -1194,7 +1174,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 scope_headers.append((b"authorization", f"Bearer {settings.http.bearer_token}".encode("latin1")))
             scope["headers"] = scope_headers
         await stateless_app(
-            {**scope, "path": base_with_slash},  # ensure mounted path
+            {**scope, "path": "/"},  # sub-app expects path relative to mount
             request.receive,
             _send,
         )

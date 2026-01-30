@@ -19,11 +19,11 @@ import json
 from typing import Any
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import build_http_app
+from tests._http_helpers import http_test_client
 
 
 def _rpc(method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -60,8 +60,7 @@ class TestBearerTokenAuth:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {"name": "health_check", "arguments": {}}),
@@ -80,8 +79,7 @@ class TestBearerTokenAuth:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 headers={"Authorization": "Bearer my-secret-token"},
@@ -101,8 +99,7 @@ class TestBearerTokenAuth:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 headers={"Authorization": "Bearer wrong-token"},
@@ -122,8 +119,7 @@ class TestBearerTokenAuth:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Missing "Bearer " prefix
             response = await client.post(
                 settings.http.path,
@@ -144,8 +140,7 @@ class TestBearerTokenAuth:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {"name": "health_check", "arguments": {}}),
@@ -173,8 +168,7 @@ class TestLocalhostBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Should succeed without Authorization header (localhost)
             response = await client.post(
                 settings.http.path,
@@ -194,8 +188,7 @@ class TestLocalhostBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Should fail without Authorization header
             response = await client.post(
                 settings.http.path,
@@ -226,8 +219,7 @@ class TestCORSPreflightBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.options(
                 settings.http.path,
                 headers={
@@ -258,8 +250,7 @@ class TestHealthEndpointBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.get("/health/liveness")
             assert response.status_code == 200
 
@@ -275,8 +266,7 @@ class TestHealthEndpointBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.get("/health/readiness")
             # May be 200 or 503 depending on DB state, but not 401
             assert response.status_code != 401
@@ -306,8 +296,7 @@ class TestRBACEnforcement:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 headers={"Authorization": "Bearer reader-token"},
@@ -332,8 +321,7 @@ class TestRBACEnforcement:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 headers={"Authorization": "Bearer test-token"},
@@ -359,8 +347,7 @@ class TestRBACEnforcement:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 headers={"Authorization": "Bearer test-token"},
@@ -385,8 +372,7 @@ class TestOAuthMetadataEndpoints:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.get("/.well-known/oauth-authorization-server")
             assert response.status_code == 200
             data = response.json()
@@ -399,8 +385,7 @@ class TestOAuthMetadataEndpoints:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.get("/.well-known/oauth-authorization-server/mcp")
             assert response.status_code == 200
             data = response.json()
@@ -464,8 +449,7 @@ class TestAuthorizationHeaderHandling:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Basic auth format (should fail)
             response = await client.post(
                 settings.http.path,
@@ -486,8 +470,7 @@ class TestAuthorizationHeaderHandling:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Different case should fail
             response = await client.post(
                 settings.http.path,
@@ -516,8 +499,7 @@ class TestAuthorizationHeaderHandling:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 headers={"Authorization": ""},
@@ -549,8 +531,7 @@ class TestRateLimitingIntegration:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             headers = {"Authorization": "Bearer test-token"}
 
             # First two requests succeed (burst=2)
@@ -591,8 +572,7 @@ class TestRateLimitingIntegration:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             headers = {"Authorization": "Bearer test-token"}
 
             # First request consumes the burst

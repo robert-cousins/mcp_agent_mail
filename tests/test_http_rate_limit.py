@@ -20,11 +20,11 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import SecurityAndRateLimitMiddleware, build_http_app
+from tests._http_helpers import http_test_client
 
 
 def _rpc(method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -52,8 +52,7 @@ class TestRateLimitEnabledDisabled:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Make many requests - all should succeed
             for _ in range(10):
                 response = await client.post(
@@ -76,8 +75,7 @@ class TestRateLimitEnabledDisabled:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # First 2 requests (burst) should succeed
             r1 = await client.post(
                 settings.http.path,
@@ -121,8 +119,7 @@ class TestTokenBucketBurst:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # All 5 requests within burst should succeed
             success_count = 0
             for _ in range(5):
@@ -149,8 +146,7 @@ class TestTokenBucketBurst:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             r1 = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {"name": "health_check", "arguments": {}}),
@@ -177,8 +173,7 @@ class TestTokenBucketBurst:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Should allow 3 requests (burst defaults to rpm)
             success_count = 0
             for _ in range(4):
@@ -216,8 +211,7 @@ class TestPerEndpointLimits:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Exhaust tools limit
             await client.post(
                 settings.http.path,
@@ -259,8 +253,7 @@ class TestPerEndpointLimits:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Resources should allow more requests
             success_count = 0
             for _ in range(5):
@@ -296,8 +289,7 @@ class TestRateLimitResponse:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # First request succeeds
             await client.post(
                 settings.http.path,
@@ -328,8 +320,7 @@ class TestRateLimitResponse:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {"name": "health_check", "arguments": {}}),
@@ -365,8 +356,7 @@ class TestHealthEndpointBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Many health checks should all succeed
             for _ in range(10):
                 response = await client.get("/health/liveness")
@@ -386,8 +376,7 @@ class TestHealthEndpointBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Many readiness checks should all succeed (or fail for other reasons, not rate limit)
             for _ in range(10):
                 response = await client.get("/health/readiness")
@@ -481,8 +470,7 @@ class TestRateLimitKeyDerivation:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Exhaust health_check limit
             await client.post(
                 settings.http.path,
@@ -534,8 +522,7 @@ class TestCORSPreflightBypass:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Many OPTIONS requests should all succeed
             for _ in range(10):
                 response = await client.options(
@@ -569,8 +556,7 @@ class TestZeroRateLimit:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # With rpm=0, rate limiting is effectively disabled for this endpoint type
             # The _consume_bucket returns True if per_minute <= 0
             for _ in range(5):
