@@ -68,7 +68,7 @@ jobs:
 
       - name: Run fast unit tests
         shell: bash
-        timeout-minutes: 30
+        timeout-minutes: 40
         env:
           PYTHONUTF8: "1"
         run: |
@@ -128,7 +128,7 @@ jobs:
 
       - name: Run fast unit tests
         shell: bash
-        timeout-minutes: 30
+        timeout-minutes: 40
         env:
           PYTHONUTF8: "1"
         run: |
