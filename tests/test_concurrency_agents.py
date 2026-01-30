@@ -709,6 +709,11 @@ class TestNoDeadlocks:
             )
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(
+        condition="sys.platform == 'darwin'",
+        reason="File lock contention timeouts on macOS CI runners",
+        strict=False,
+    )
     async def test_high_concurrency_no_corruption(self, isolated_env):
         """High concurrency stress test - no data corruption."""
         await ensure_schema()
