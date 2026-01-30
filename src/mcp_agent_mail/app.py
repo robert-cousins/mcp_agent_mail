@@ -4380,46 +4380,10 @@ def build_mcp_server() -> FastMCP:
             raise RuntimeError("Message payload was not generated.")
         return payload
 
-    @mcp.tool(name="health_check", description="Return basic readiness information for the Agent Mail server.")
+    @mcp.tool(name="health_check", description="Check server readiness. Returns {status, environment, http_host, http_port, database_url}.")
     @_instrument_tool("health_check", cluster=CLUSTER_SETUP, capabilities={"infrastructure"}, complexity="low")
     async def health_check(ctx: Context, format: Optional[str] = None) -> dict[str, Any]:
-        """
-        Quick readiness probe for agents and orchestrators.
-
-        When to use
-        -----------
-        - Before starting a workflow, to ensure the coordination server is reachable
-          and configured (right environment, host/port, DB wiring).
-        - During incident triage to print basic diagnostics to logs via `ctx.info`.
-
-        What it checks vs what it does not
-        ----------------------------------
-        - Reports current environment and HTTP binding details.
-        - Returns the configured database URL (not a live connection test).
-        - Does not perform deep dependency health checks or connection attempts.
-
-        Returns
-        -------
-        dict
-            {
-              "status": "ok" | "degraded" | "error",
-              "environment": str,
-              "http_host": str,
-              "http_port": int,
-              "database_url": str
-            }
-
-        Examples
-        --------
-        JSON-RPC (generic MCP client):
-        ```json
-        {"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"health_check","arguments":{}}}
-        ```
-
-        Typical agent usage (pseudocode):
-        - Call `health_check`.
-        - If status != ok, sleep/retry with backoff and log `environment`/`http_host`/`http_port`.
-        """
+        """Quick readiness probe. Call before workflows to verify server is reachable."""
         await ctx.info("Running health check.")
         return {
             "status": "ok",
@@ -4429,7 +4393,7 @@ def build_mcp_server() -> FastMCP:
             "database_url": settings.database.url,
         }
 
-    @mcp.tool(name="ensure_project")
+    @mcp.tool(name="ensure_project", description="Create/ensure a project exists. human_key MUST be an absolute path. Returns {id, slug, human_key, created_at}.")
     @_instrument_tool("ensure_project", cluster=CLUSTER_SETUP, capabilities={"infrastructure", "storage"}, complexity="low", project_arg="human_key")
     async def ensure_project(
         ctx: Context,
@@ -4438,64 +4402,9 @@ def build_mcp_server() -> FastMCP:
         format: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Idempotently create or ensure a project exists for the given human key.
-
-        When to use
-        -----------
-        - First call in a workflow targeting a new repo/path identifier.
-        - As a guard before registering agents or sending messages.
-
-        How it works
-        ------------
-        - Validates that `human_key` is an absolute directory path (the agent's working directory).
-        - Computes a stable slug from `human_key` (lowercased, safe characters) so
-          multiple agents can refer to the same project consistently.
-        - Ensures DB row exists and that the on-disk archive is initialized
-          (e.g., `messages/`, `agents/`, `file_reservations/` directories).
-
-        CRITICAL: Project Identity Rules
-        ---------------------------------
-        - The `human_key` MUST be the absolute path to the agent's working directory
-        - Two agents working in the SAME directory path are working on the SAME project
-        - Example: Both agents in /data/projects/smartedgar_mcp → SAME project
-        - Sibling projects are DIFFERENT directories (e.g., /data/projects/smartedgar_mcp
-          vs /data/projects/smartedgar_mcp_frontend)
-
-        Parameters
-        ----------
-        human_key : str
-            The absolute path to the agent's working directory (e.g., "/data/projects/backend").
-            This MUST be an absolute path, not a relative path or arbitrary slug.
-            This is the canonical identifier for the project - all agents working in this
-            directory will share the same project identity.
-
-        Returns
-        -------
-        dict
-            Minimal project descriptor: { id, slug, human_key, created_at }.
-
-        Examples
-        --------
-        JSON-RPC:
-        ```json
-        {
-          "jsonrpc": "2.0",
-          "id": "2",
-          "method": "tools/call",
-          "params": {"name": "ensure_project", "arguments": {"human_key": "/data/projects/backend"}}
-        }
-        ```
-
-        Common mistakes
-        ---------------
-        - Passing a relative path (e.g., "./backend") instead of an absolute path
-        - Using arbitrary slugs instead of the actual working directory path
-        - Creating separate projects for the same directory with different slugs
-
-        Idempotency
-        -----------
-        - Safe to call multiple times. If the project already exists, the existing
-          record is returned and the archive is ensured on disk (no destructive changes).
+        Idempotently create or ensure a project exists. Call first before register_agent or send_message.
+        human_key: absolute path to agent's working directory (e.g., "/data/projects/backend").
+        Same path = same project. Idempotent: safe to call multiple times.
         """
         # Validate that human_key is an absolute path (cross-platform)
         if not Path(human_key).is_absolute():
@@ -4514,7 +4423,7 @@ def build_mcp_server() -> FastMCP:
             payload.update(_resolve_project_identity(human_key))
         return payload
 
-    @mcp.tool(name="register_agent")
+    @mcp.tool(name="register_agent", description="Register or update an agent identity. Omit 'name' to auto-generate (recommended). Returns {id, name, program, model, ...}.")
     @_instrument_tool("register_agent", cluster=CLUSTER_IDENTITY, capabilities={"identity"}, agent_arg="name", project_arg="project_key")
     async def register_agent(
         ctx: Context,
@@ -4527,70 +4436,11 @@ def build_mcp_server() -> FastMCP:
         format: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Create or update an agent identity within a project and persist its profile to Git.
-
-        When to use
-        -----------
-        - At the start of a coding session by any automated agent.
-        - To update an existing agent's program/model/task metadata and bump last_active.
-
-        Semantics
-        ---------
-        - If `name` is omitted, a random adjective+noun name is auto-generated.
-        - Reusing the same `name` updates the profile (program/model/task) and
-          refreshes `last_active_ts`.
-        - A `profile.json` file is written under `agents/<Name>/` in the project archive.
-
-        CRITICAL: Agent Naming Rules
-        -----------------------------
-        - Agent names MUST be randomly generated adjective+noun combinations
-        - Examples: "GreenLake", "BlueDog", "RedStone", "PurpleBear"
-        - Names should be unique, easy to remember, and NOT descriptive
-        - INVALID examples: "BackendHarmonizer", "DatabaseMigrator", "UIRefactorer"
-        - The whole point: names should be memorable identifiers, not role descriptions
-        - Best practice: Omit the `name` parameter to auto-generate a valid name
-
-        Parameters
-        ----------
-        project_key : str
-            The same human key you passed to `ensure_project` (or equivalent identifier).
-        program : str
-            The agent program (e.g., "codex-cli", "claude-code").
-        model : str
-            The underlying model (e.g., "gpt5-codex", "opus-4.1").
-        name : Optional[str]
-            MUST be a valid adjective+noun combination if provided (e.g., "BlueLake").
-            If omitted, a random valid name is auto-generated (RECOMMENDED).
-            Names are unique per project; passing the same name updates the profile.
-        task_description : str
-            Short description of current focus (shows up in directory listings).
-
-        Returns
-        -------
-        dict
-            { id, name, program, model, task_description, inception_ts, last_active_ts, project_id }
-
-        Examples
-        --------
-        Register with auto-generated name (RECOMMENDED):
-        ```json
-        {"jsonrpc":"2.0","id":"3","method":"tools/call","params":{"name":"register_agent","arguments":{
-          "project_key":"/data/projects/backend","program":"codex-cli","model":"gpt5-codex","task_description":"Auth refactor"
-        }}}
-        ```
-
-        Register with explicit valid name:
-        ```json
-        {"jsonrpc":"2.0","id":"4","method":"tools/call","params":{"name":"register_agent","arguments":{
-          "project_key":"/data/projects/backend","program":"claude-code","model":"opus-4.1","name":"BlueLake","task_description":"Navbar redesign"
-        }}}
-        ```
-
-        Pitfalls
-        --------
-        - Names MUST match the adjective+noun format or an error will be raised
-        - Names are case-insensitive unique. If you see "already in use", pick another or omit `name`.
-        - Use the same `project_key` consistently across cooperating agents.
+        Create or update an agent identity. Call at session start.
+        - name: omit to auto-generate (e.g., "BlueLake"). If provided, must be adjective+noun format.
+        - program: agent program (e.g., "claude-code", "codex-cli")
+        - model: underlying model (e.g., "gpt-4", "opus-4")
+        Reusing same name updates the profile and refreshes last_active_ts.
         """
         _validate_program_model(program, model)
         project = await _get_project_by_identifier(project_key)
@@ -4759,7 +4609,7 @@ def build_mcp_server() -> FastMCP:
         await ctx.info(f"Created new agent identity '{agent.name}' for project '{project.human_key}'.")
         return _agent_to_dict(agent)
 
-    @mcp.tool(name="send_message")
+    @mcp.tool(name="send_message", description="Send a Markdown message to recipients. Returns {deliveries: [...], count: int}.")
     @_instrument_tool(
         "send_message",
         cluster=CLUSTER_MESSAGING,
@@ -4785,100 +4635,12 @@ def build_mcp_server() -> FastMCP:
         format: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Send a Markdown message to one or more recipients and persist canonical and mailbox copies to Git.
-
-        Discovery
-        ---------
-        To discover available agent names for recipients, use: resource://agents/{project_key}
-        Agent names are NOT the same as program names or user names.
-
-        What this does
-        --------------
-        - Stores message (and recipients) in the database; updates sender's activity
-        - Writes a canonical `.md` under `messages/YYYY/MM/`
-        - Writes sender outbox and per-recipient inbox copies
-        - Optionally converts referenced images to WebP and embeds small images inline
-        - Supports explicit attachments via `attachment_paths` in addition to inline references
-
-        Parameters
-        ----------
-        project_key : str
-            Project identifier (same used with `ensure_project`/`register_agent`).
-        sender_name : str
-            Must match an agent registered in the project.
-        to : list[str]
-            Primary recipients (agent names). At least one of to/cc/bcc must be non-empty.
-        subject : str
-            Short subject line that will be visible in inbox/outbox and search results.
-        body_md : str
-            GitHub-Flavored Markdown body. Image references can be file paths or data URIs.
-        cc, bcc : Optional[list[str]]
-            Additional recipients by name.
-        attachment_paths : Optional[list[str]]
-            Extra file paths to include as attachments; will be converted to WebP and stored.
-        convert_images : Optional[bool]
-            Overrides server default for image conversion/inlining. If None, server settings apply.
-            Note: sender attachments_policy "inline"/"file" always forces conversion/inlining.
-        importance : str
-            One of {"low","normal","high","urgent"} (free form tolerated; used by filters).
-        ack_required : bool
-            If true, recipients should call `acknowledge_message` after reading.
-        thread_id : Optional[str]
-            If provided, message will be associated with an existing thread.
-
-        Returns
-        -------
-        dict
-            {
-              "deliveries": [ { "project": str, "payload": { ... message payload ... } } ],
-              "count": int
-            }
-
-        Edge cases
-        ----------
-        - If no recipients are given, the call fails.
-        - Unknown recipient names fail fast; register them first.
-        - Non-absolute attachment paths are resolved relative to the project archive root.
-
-        Do / Don't
-        ----------
-        Do:
-        - Keep subjects concise and specific (aim for ≤ 80 characters).
-        - Use `thread_id` (or `reply_message`) to keep related discussion in a single thread.
-        - Address only relevant recipients; use CC/BCC sparingly and intentionally.
-        - Prefer Markdown links; attach images only when they materially aid understanding. The server
-          auto-converts images to WebP and may inline small images depending on policy.
-
-        Don't:
-        - Send large, repeated binaries—reuse prior attachments via `attachment_paths` when possible.
-        - Change topics mid-thread—start a new thread for a new subject.
-        - Broadcast to "all" agents unnecessarily—target just the agents who need to act.
-
-        Examples
-        --------
-        1) Simple message:
-        ```json
-        {"jsonrpc":"2.0","id":"5","method":"tools/call","params":{"name":"send_message","arguments":{
-          "project_key":"/abs/path/backend","sender_name":"GreenCastle","to":["BlueLake"],
-          "subject":"Plan for /api/users","body_md":"See below."
-        }}}
-        ```
-
-        2) Inline image (auto-convert to WebP and inline if small):
-        ```json
-        {"jsonrpc":"2.0","id":"6a","method":"tools/call","params":{"name":"send_message","arguments":{
-          "project_key":"/abs/path/backend","sender_name":"GreenCastle","to":["BlueLake"],
-          "subject":"Diagram","body_md":"![diagram](docs/flow.png)","convert_images":true
-        }}}
-        ```
-
-        3) Explicit attachments:
-        ```json
-        {"jsonrpc":"2.0","id":"6b","method":"tools/call","params":{"name":"send_message","arguments":{
-          "project_key":"/abs/path/backend","sender_name":"GreenCastle","to":["BlueLake"],
-          "subject":"Screenshots","body_md":"Please review.","attachment_paths":["shots/a.png","shots/b.png"]
-        }}}
-        ```
+        Send a Markdown message to one or more agent recipients.
+        - to: list of agent names (e.g., ["BlueLake"]). Use resource://agents/{project_key} to discover names.
+        - subject: short subject line
+        - body_md: GitHub-Flavored Markdown body
+        - importance: "low"|"normal"|"high"|"urgent"
+        - ack_required: if true, recipients should acknowledge
         """
         project = await _get_project_by_identifier(project_key)
 
@@ -6224,7 +5986,7 @@ def build_mcp_server() -> FastMCP:
                 await s.commit()
         return {"agent": agent.name, "policy": pol}
 
-    @mcp.tool(name="fetch_inbox")
+    @mcp.tool(name="fetch_inbox", description="Get recent messages for an agent. Returns list of {id, subject, from, created_ts, importance, ...}.")
     @_instrument_tool(
         "fetch_inbox",
         cluster=CLUSTER_MESSAGING,
@@ -6243,33 +6005,11 @@ def build_mcp_server() -> FastMCP:
         format: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """
-        Retrieve recent messages for an agent without mutating read/ack state.
-
-        Filters
-        -------
-        - `urgent_only`: only messages with importance in {high, urgent}
-        - `since_ts`: ISO-8601 timestamp string; messages strictly newer than this are returned
-        - `limit`: max number of messages (default 20)
-        - `include_bodies`: include full Markdown bodies in the payloads
-
-        Usage patterns
-        --------------
-        - Poll after each editing step in an agent loop to pick up coordination messages.
-        - Use `since_ts` with the timestamp from your last poll for efficient incremental fetches.
-        - Combine with `acknowledge_message` if `ack_required` is true.
-
-        Returns
-        -------
-        list[dict]
-            Each message includes: { id, subject, from, created_ts, importance, ack_required, kind, [body_md] }
-
-        Example
-        -------
-        ```json
-        {"jsonrpc":"2.0","id":"7","method":"tools/call","params":{"name":"fetch_inbox","arguments":{
-          "project_key":"/abs/path/backend","agent_name":"BlueLake","since_ts":"2025-10-23T00:00:00+00:00"
-        }}}
-        ```
+        Retrieve recent messages for an agent (read-only, does not mark as read).
+        - limit: max messages (default 20)
+        - urgent_only: filter to high/urgent importance
+        - since_ts: ISO-8601 timestamp for incremental polling
+        - include_bodies: include full Markdown body in response
         """
         # Validate limit parameter bounds
         if limit < 1:
@@ -6380,7 +6120,7 @@ def build_mcp_server() -> FastMCP:
                     pass
             raise
 
-    @mcp.tool(name="acknowledge_message")
+    @mcp.tool(name="acknowledge_message", description="Acknowledge a message (marks as read too). Returns {message_id, acknowledged, acknowledged_at, read_at}.")
     @_instrument_tool(
         "acknowledge_message",
         cluster=CLUSTER_MESSAGING,
@@ -6396,34 +6136,8 @@ def build_mcp_server() -> FastMCP:
         format: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Acknowledge a message addressed to an agent (and mark as read).
-
-        Behavior
-        --------
-        - Sets both read_ts and ack_ts for the (agent, message) pairing
-        - Safe to call multiple times; subsequent calls will return the prior timestamps
-
-        Idempotency
-        -----------
-        - If acknowledgement already exists, the previous timestamps are preserved and returned.
-
-        When to use
-        -----------
-        - Respond to messages with `ack_required=true` to signal explicit receipt.
-        - Agents can treat an acknowledgement as a lightweight, non-textual reply.
-
-        Returns
-        -------
-        dict
-            { message_id, acknowledged: bool, acknowledged_at: iso8601 | null, read_at: iso8601 | null }
-
-        Example
-        -------
-        ```json
-        {"jsonrpc":"2.0","id":"9","method":"tools/call","params":{"name":"acknowledge_message","arguments":{
-          "project_key":"/abs/path/backend","agent_name":"BlueLake","message_id":1234
-        }}}
-        ```
+        Acknowledge a message and mark as read. Use for messages with ack_required=true.
+        Idempotent: safe to call multiple times.
         """
         if get_settings().tools_log_enabled:
             try:

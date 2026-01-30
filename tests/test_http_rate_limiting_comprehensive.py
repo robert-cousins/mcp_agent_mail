@@ -21,11 +21,13 @@ from types import ModuleType
 from typing import Any, cast
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import build_http_app
+from tests._http_helpers import http_test_client
+
+pytestmark = pytest.mark.http
 
 
 def _rpc(method: str, params: dict) -> dict:
@@ -54,8 +56,7 @@ class TestBasicRateLimiting:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # First two requests should succeed
             r1 = await client.post(
                 settings.http.path,
@@ -89,8 +90,7 @@ class TestBasicRateLimiting:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Make many requests - all should succeed
             for _ in range(10):
                 r = await client.post(
@@ -122,8 +122,7 @@ class TestDifferentEndpointLimits:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Exhaust tools limit (2 requests)
             r1 = await client.post(
                 settings.http.path,
@@ -163,8 +162,7 @@ class TestDifferentEndpointLimits:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # First resource request should succeed
             r1 = await client.post(
                 settings.http.path,
@@ -202,8 +200,7 @@ class TestBurstCapacity:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Should allow burst of 5 requests immediately
             results = []
             for _ in range(5):
@@ -237,8 +234,7 @@ class TestBurstCapacity:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # With 0 burst, bucket size defaults to rpm (2)
             r1 = await client.post(
                 settings.http.path,
@@ -281,8 +277,7 @@ class TestTokenRefill:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Use up the single token
             r1 = await client.post(
                 settings.http.path,
@@ -329,11 +324,9 @@ class TestPerClientRateLimiting:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-
         # In ASGI test transport, all requests share same client identity
         # This test verifies consistent rate limiting per identity
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             r1 = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {"name": "health_check", "arguments": {}}),
@@ -394,8 +387,7 @@ class TestRedisBackend:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # First two should succeed
             r1 = await client.post(
                 settings.http.path,
@@ -448,8 +440,7 @@ class TestRedisBackend:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Should fail open and allow the request
             r = await client.post(
                 settings.http.path,
@@ -479,8 +470,7 @@ class TestEdgeCases:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Many requests should all succeed
             for _ in range(20):
                 r = await client.post(
@@ -502,8 +492,7 @@ class TestEdgeCases:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # First call to health_check succeeds
             r1 = await client.post(
                 settings.http.path,
@@ -531,8 +520,7 @@ class TestEdgeCases:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Use up limit
             await client.post(
                 settings.http.path,

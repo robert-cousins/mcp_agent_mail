@@ -21,14 +21,14 @@ async def test_core_resources(isolated_env):
         )
         payload = (msg.data.get("deliveries") or [{}])[0].get("payload", {})
         mid = payload.get("id") or 1
-        # config
-        cfg = await client.read_resource("resource://config/environment")
+        # config (FastMCP 2.13+ requires query param for template URIs)
+        cfg = await client.read_resource("resource://config/environment?format=json")
         assert cfg
         # projects
-        projs = await client.read_resource("resource://projects")
+        projs = await client.read_resource("resource://projects?format=json")
         assert projs
         # project specific
-        proj = await client.read_resource("resource://project/backend")
+        proj = await client.read_resource("resource://project/backend?format=json")
         assert proj
         # message
         mres = await client.read_resource(f"resource://message/{mid}?project=Backend")

@@ -33,6 +33,8 @@ from sqlalchemy import text
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.db import get_session
 
+pytestmark = pytest.mark.slow
+
 # ============================================================================
 # Constants
 # ============================================================================

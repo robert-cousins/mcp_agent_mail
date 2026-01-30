@@ -75,7 +75,7 @@ async def test_tool_metrics_resource_populates_after_calls(isolated_env):
         await client.call_tool("ensure_project", {"human_key": "/backend"})
 
         # tooling metrics resource
-        metrics_blocks = await client.read_resource("resource://tooling/metrics")
+        metrics_blocks = await client.read_resource("resource://tooling/metrics?format=json")
         assert metrics_blocks and metrics_blocks[0].text
         # the text is JSON; ensure tools list contains health_check
         assert "health_check" in metrics_blocks[0].text

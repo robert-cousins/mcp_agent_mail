@@ -135,6 +135,7 @@ filterwarnings = [
 ]
 markers = [
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "http: marks tests involving HTTP/ASGI lifecycle (deselect with '-m \"not http\"')",
   "benchmark: marks tests as performance benchmarks",
   "ci_regression: marks tests for CI performance regression checking",
 ]

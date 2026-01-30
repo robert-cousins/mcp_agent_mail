@@ -3,11 +3,13 @@ from __future__ import annotations
 import contextlib
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import build_http_app
+from tests._http_helpers import http_test_client
+
+pytestmark = pytest.mark.http
 
 
 def _rpc(method: str, params: dict) -> dict:
@@ -23,8 +25,7 @@ async def test_request_logging_middleware_and_liveness(isolated_env, monkeypatch
     server = build_mcp_server()
     app = build_http_app(settings, server)
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         r = await client.get("/health/liveness")
         assert r.status_code == 200
 
@@ -45,8 +46,7 @@ async def test_readiness_error_path_returns_503(isolated_env, monkeypatch):
     monkeypatch.setattr(http_mod, "readiness_check", fail_readiness)
     app = build_http_app(settings, server)
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         r = await client.get("/health/readiness")
         assert r.status_code == 503
 
@@ -66,8 +66,7 @@ async def test_rbac_denies_when_tool_name_missing(isolated_env, monkeypatch):
     server = build_mcp_server()
     app = build_http_app(settings, server)
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         r = await client.post(settings.http.path, json=_rpc("tools/call", {"arguments": {}}))
         # Accept either 401 (Unauthorized) or 403 (Forbidden) - both indicate access denied
         assert r.status_code in {401, 403}, f"Expected 401 or 403, got {r.status_code}"

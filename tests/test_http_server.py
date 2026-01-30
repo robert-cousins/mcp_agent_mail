@@ -17,12 +17,14 @@ import contextlib
 from typing import Any
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.db import ensure_schema
 from mcp_agent_mail.http import build_http_app
+from tests._http_helpers import http_test_client
+
+pytestmark = pytest.mark.http
 
 
 def _rpc(method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -94,8 +96,7 @@ class TestHealthEndpoints:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.get("/health/liveness")
             assert response.status_code == 200
             data = response.json()
@@ -111,8 +112,7 @@ class TestHealthEndpoints:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.get("/health/readiness")
             assert response.status_code == 200
             data = response.json()
@@ -130,8 +130,7 @@ class TestHealthEndpoints:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # No auth header - should still work for health endpoints
             r1 = await client.get("/health/liveness")
             assert r1.status_code == 200
@@ -156,8 +155,7 @@ class TestSSEConnection:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Request with SSE Accept header
             headers = {"Accept": "text/event-stream"}
             response = await client.get(
@@ -174,8 +172,7 @@ class TestSSEConnection:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # POST to MCP path with SSE in Accept
             headers = {
                 "Accept": "application/json, text/event-stream",
@@ -205,8 +202,7 @@ class TestToolCallsOverHTTP:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {"name": "health_check", "arguments": {}}),
@@ -223,8 +219,7 @@ class TestToolCallsOverHTTP:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {"name": "health_check", "arguments": {}}),
@@ -246,8 +241,7 @@ class TestToolCallsOverHTTP:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Without auth -> 401
             r1 = await client.post(
                 settings.http.path,
@@ -279,8 +273,7 @@ class TestResourceReadsOverHTTP:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("resources/list", {}),
@@ -296,8 +289,7 @@ class TestResourceReadsOverHTTP:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("resources/read", {"uri": "resource://projects"}),
@@ -327,8 +319,7 @@ class TestCORSHeaders:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.options(
                 settings.http.path,
                 headers={
@@ -352,8 +343,7 @@ class TestCORSHeaders:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 headers={"Origin": "http://test-origin.com"},
@@ -374,8 +364,7 @@ class TestCORSHeaders:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.get("/health/liveness")
             assert response.status_code == 200
             # CORS headers should not be present when disabled
@@ -398,8 +387,7 @@ class TestHTTPErrorHandling:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 content=b"not valid json{{{",
@@ -415,8 +403,7 @@ class TestHTTPErrorHandling:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json={"jsonrpc": "2.0", "id": "1"},  # Missing method
@@ -447,8 +434,7 @@ class TestRequestLogging:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             await client.get("/health/liveness")
 
         # Logging should have occurred (may use structlog or stdlib)

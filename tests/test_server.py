@@ -75,7 +75,7 @@ async def test_messaging_flow(isolated_env):
         assert len(inbox_items) == 1
         assert inbox_items[0]["subject"] == "Test"
 
-        resource_blocks = await client.read_resource("resource://project/backend")
+        resource_blocks = await client.read_resource("resource://project/backend?format=json")
         assert resource_blocks
         text_payload = resource_blocks[0].text
         assert "BlueLake" in text_payload
@@ -159,7 +159,7 @@ async def test_file_reservation_conflicts_and_release(isolated_env):
         )
         assert release.data["released"] == 1
 
-        file_reservations_resource = await client.read_resource("resource://file_reservations/backend")
+        file_reservations_resource = await client.read_resource("resource://file_reservations/backend?format=json")
         payload = json.loads(file_reservations_resource[0].text)
         assert any(entry["path_pattern"] == "src/app.py" and entry["released_ts"] is not None for entry in payload)
 

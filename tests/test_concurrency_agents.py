@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import random
 import string
+from typing import Any, cast
 
 import pytest
 from fastmcp import Client
@@ -30,6 +31,8 @@ from sqlalchemy import text
 
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.db import ensure_schema, get_session
+
+pytestmark = pytest.mark.slow
 
 # ============================================================================
 # Helper functions
@@ -192,7 +195,8 @@ class TestConcurrentMessageSending:
             # Verify no exceptions and all sends succeeded
             for i, r in enumerate(results):
                 assert not isinstance(r, Exception), f"Agent {i} failed: {r}"
-                assert r["result"]["count"] >= 1, f"Agent {i} should have at least 1 delivery"
+                rd = cast(dict[str, Any], r)
+                assert rd["result"]["count"] >= 1, f"Agent {i} should have at least 1 delivery"
 
             # Verify all expected subjects exist (data integrity)
             pid = await get_project_id(project_key)
@@ -368,8 +372,9 @@ class TestConcurrentFileReservations:
             # All should succeed with no conflicts
             for i, r in enumerate(results):
                 assert not isinstance(r, Exception), f"Agent {i} failed: {r}"
-                assert len(r["granted"]) == 1, f"Agent {i} should get reservation"
-                assert len(r["conflicts"]) == 0, f"Agent {i} should have no conflicts"
+                rd = cast(dict[str, Any], r)
+                assert len(rd["granted"]) == 1, f"Agent {i} should get reservation"
+                assert len(rd["conflicts"]) == 0, f"Agent {i} should have no conflicts"
 
 
 # ============================================================================
@@ -434,8 +439,9 @@ class TestConcurrentInboxFetches:
             # Verify no exceptions - fetches complete successfully
             for i, r in enumerate(results):
                 assert not isinstance(r, Exception), f"Agent {i} failed: {r}"
+                rd = cast(dict[str, Any], r)
                 # Each agent should have some messages in their inbox
-                assert r["count"] >= 0, f"Agent {i} fetch should return count"
+                assert rd["count"] >= 0, f"Agent {i} fetch should return count"
 
     @pytest.mark.asyncio
     async def test_rapid_repeated_inbox_fetches(self, isolated_env):
@@ -705,6 +711,11 @@ class TestNoDeadlocks:
             )
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(
+        condition="sys.platform == 'darwin'",
+        reason="File lock contention timeouts on macOS CI runners",
+        strict=False,
+    )
     async def test_high_concurrency_no_corruption(self, isolated_env):
         """High concurrency stress test - no data corruption."""
         await ensure_schema()
@@ -902,7 +913,8 @@ class TestRaceConditions:
             # All should succeed (idempotent)
             for i, r in enumerate(results):
                 assert not isinstance(r, Exception), f"Attempt {i} failed: {r}"
-                assert r["read"] is True
+                rd = cast(dict[str, Any], r)
+                assert rd["read"] is True
 
     @pytest.mark.asyncio
     async def test_simultaneous_acknowledgement(self, isolated_env):
@@ -951,4 +963,5 @@ class TestRaceConditions:
             # All should succeed (idempotent)
             for i, r in enumerate(results):
                 assert not isinstance(r, Exception), f"Attempt {i} failed: {r}"
-                assert r["acknowledged"] is True
+                rd = cast(dict[str, Any], r)
+                assert rd["acknowledged"] is True

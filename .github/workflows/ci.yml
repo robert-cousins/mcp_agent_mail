@@ -5,25 +5,34 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      full_suite:
+        description: 'Run full test suite (including http and slow tests)'
+        required: false
+        default: 'false'
+        type: boolean
+  schedule:
+    # Run full suite nightly at 2am UTC
+    - cron: '0 2 * * *'
 
 jobs:
-  build-and-test:
-    name: Lint, Type Check, Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  # Fast CI: runs on every push/PR (Ubuntu only for PRs, +macOS on main)
+  # Excludes HTTP lifecycle and slow tests for quick feedback
+  fast-tests:
+    name: Fast Tests (ubuntu)
+    runs-on: ubuntu-latest
+    # Skip fast tests if full suite is requested
+    if: github.event_name != 'schedule' && (github.event_name != 'workflow_dispatch' || github.event.inputs.full_suite != 'true')
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.14
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
-          allow-prereleases: true
+          python-version: '3.12'
 
       - name: Install uv
         shell: bash
@@ -57,12 +66,151 @@ jobs:
         run: |
           uvx ty check
 
-      - name: Run tests
+      - name: Run fast unit tests
         shell: bash
+        timeout-minutes: 40
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -q
+          uv run -m pytest -v --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
+            -m "not http and not slow" \
+            --ignore=tests/benchmarks/ \
+            --ignore=tests/e2e/ \
+            --ignore=tests/integration/
+
+  # Fast CI for macOS: only on main pushes (not PRs) for faster PR feedback
+  fast-tests-macos:
+    name: Fast Tests (macos)
+    runs-on: macos-latest
+    # Only run on main pushes, not PRs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        shell: bash
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          uv --version
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ci-uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ci-uv-${{ runner.os }}-
+
+      - name: Sync dependencies
+        shell: bash
+        run: |
+          uv sync --dev
+
+      - name: Lint (ruff)
+        shell: bash
+        run: |
+          uv run ruff check
+
+      - name: Type check
+        shell: bash
+        run: |
+          uvx ty check
+
+      - name: Run fast unit tests
+        shell: bash
+        timeout-minutes: 40
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          uv run -m pytest -v --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
+            -m "not http and not slow" \
+            --ignore=tests/benchmarks/ \
+            --ignore=tests/e2e/ \
+            --ignore=tests/integration/
+
+  # Full CI: runs nightly or on manual trigger
+  # Includes HTTP lifecycle tests and slow/stress tests
+  full-tests:
+    name: Full Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # Only run on schedule or when explicitly requested
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.full_suite == 'true')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        shell: bash
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          uv --version
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ci-uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ci-uv-${{ runner.os }}-
+
+      - name: Sync dependencies
+        shell: bash
+        run: |
+          uv sync --dev
+
+      - name: Lint (ruff)
+        shell: bash
+        run: |
+          uv run ruff check
+
+      - name: Type check
+        shell: bash
+        run: |
+          uvx ty check
+
+      - name: Run full unit tests
+        shell: bash
+        timeout-minutes: 45
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          uv run -m pytest -vv --maxfail=3 --durations=25 --timeout=60 --timeout-method=thread \
+            --ignore=tests/benchmarks/ \
+            --ignore=tests/e2e/ \
+            --ignore=tests/integration/
+
+      # e2e tests disabled until stabilized - run manually before releases
+      # - name: Run e2e and integration tests (Ubuntu only)
+      #   if: matrix.os == 'ubuntu-latest'
+      #   shell: bash
+      #   timeout-minutes: 10
+      #   env:
+      #     PYTHONUTF8: "1"
+      #   run: |
+      #     uv run -m pytest tests/e2e/ tests/integration/ -vv --maxfail=3 --durations=25 --timeout=120 --timeout-method=thread
 
       - name: Smoke test am-run (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'

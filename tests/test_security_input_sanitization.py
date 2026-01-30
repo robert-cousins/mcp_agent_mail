@@ -17,13 +17,13 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import _quote_hyphenated_tokens, _sanitize_fts_query, build_mcp_server
 from mcp_agent_mail.db import ensure_schema, get_session
 from mcp_agent_mail.http import build_http_app
 from mcp_agent_mail.models import Agent, Project
+from tests._http_helpers import http_test_client
 
 
 def _rpc(method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -199,8 +199,7 @@ class TestSQLInjectionPrevention:
             session.add(project)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Attempt SQL injection via search query
             malicious_queries = [
                 "'; DROP TABLE messages; --",
@@ -236,8 +235,7 @@ class TestSQLInjectionPrevention:
             session.add(project)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # FTS5 special characters
             special_queries = [
                 "foo:bar",
@@ -276,8 +274,7 @@ class TestPathTraversalPrevention:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Attempt path traversal
             traversal_paths = [
                 "../../../etc/passwd",
@@ -324,8 +321,7 @@ class TestPathTraversalPrevention:
             session.add(agent)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Attempt path traversal in file patterns
             traversal_patterns = [
                 ["../../../etc/passwd"],
@@ -372,8 +368,7 @@ class TestLargeInputHandling:
             session.add(project)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Very long query (10KB)
             long_query = "a" * 10000
 
@@ -412,8 +407,7 @@ class TestLargeInputHandling:
             session.add(agent)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Register agent first
             await client.post(
                 settings.http.path,
@@ -471,8 +465,7 @@ class TestLargeInputHandling:
             session.add(agent)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Many recipients (most won't exist)
             many_recipients = [f"Agent{i}" for i in range(100)]
 
@@ -510,8 +503,7 @@ class TestNullByteInjection:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {
@@ -536,8 +528,7 @@ class TestNullByteInjection:
             session.add(project)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             response = await client.post(
                 settings.http.path,
                 json=_rpc("tools/call", {
@@ -576,8 +567,7 @@ class TestUnicodeEncodingAttacks:
             session.add(project)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Unicode variations and special characters
             unicode_queries = [
                 "\u202e\u0041\u0042\u0043",  # Right-to-left override
@@ -612,8 +602,7 @@ class TestUnicodeEncodingAttacks:
             session.add(project)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Mixed valid/invalid UTF-8 (Python will normalize these)
             response = await client.post(
                 settings.http.path,
@@ -657,8 +646,7 @@ class TestSpecialCharactersInIdentifiers:
             session.add(agent)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Special characters in thread_id
             special_thread_ids = [
                 "thread<script>alert(1)</script>",
@@ -735,8 +723,7 @@ class TestXSSPrevention:
             session.add(agent)
             await session.commit()
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             xss_body = "<script>alert('XSS')</script>"
 
             response = await client.post(
@@ -771,8 +758,7 @@ class TestMalformedJSONHandling:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Deeply nested structure (100 levels)
             nested = {"level": None}
             current = nested
@@ -799,8 +785,7 @@ class TestMalformedJSONHandling:
         server = build_mcp_server()
         app = build_http_app(settings, server)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with http_test_client(app) as client:
             # Note: Python's json module takes the last value for duplicate keys
             response = await client.post(
                 settings.http.path,

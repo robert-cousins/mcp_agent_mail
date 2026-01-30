@@ -22,7 +22,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import NoResultFound
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import Receive, Scope, Send
 
 from .app import (
@@ -203,40 +202,63 @@ def _configure_logging(settings: Settings) -> None:
     _LOGGING_CONFIGURED = True
 
 
-class BearerAuthMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: FastAPI, token: str, allow_localhost: bool = False) -> None:
-        super().__init__(app)
+class BearerAuthMiddleware:
+    """Pure ASGI middleware for bearer token auth (avoids BaseHTTPMiddleware streaming issues)."""
+
+    def __init__(self, app: Any, token: str, allow_localhost: bool = False) -> None:
+        self.app = app
         self._token = token
         self._allow_localhost = allow_localhost
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
-        if request.method == "OPTIONS":  # allow CORS preflight
-            return await call_next(request)
-        if request.url.path.startswith("/health/"):
-            return await call_next(request)
-        # Allow localhost without Authorization when enabled
-        try:
-            client_host = request.client.host if request.client else ""
-        except Exception:
-            client_host = ""
+    async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        method = scope.get("method", "")
+        path = scope.get("path", "")
+
+        # Allow CORS preflight and health checks
+        if method == "OPTIONS" or path.startswith("/health/"):
+            await self.app(scope, receive, send)
+            return
+
+        # Allow localhost when enabled
+        client = scope.get("client")
+        client_host = client[0] if client else ""
         if self._allow_localhost and client_host in {"127.0.0.1", "::1", "localhost"}:
-            return await call_next(request)
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header != f"Bearer {self._token}":
-            return JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
-        return await call_next(request)
+            await self.app(scope, receive, send)
+            return
+
+        # Check Authorization header
+        headers = {k.decode("latin1").lower(): v.decode("latin1") for k, v in scope.get("headers", [])}
+        auth_header = headers.get("authorization", "")
+        if auth_header == f"Bearer {self._token}":
+            await self.app(scope, receive, send)
+            return
+
+        # Fallback: check access_token query parameter
+        query_string = scope.get("query_string", b"").decode("latin1")
+        query_params = dict(pair.split("=", 1) for pair in query_string.split("&") if "=" in pair)
+        if query_params.get("access_token") == self._token:
+            await self.app(scope, receive, send)
+            return
+
+        # Reject unauthorized
+        response = JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+        await response(scope, receive, send)
 
 
-class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
-    """JWT auth (optional), RBAC, and token-bucket rate limiting.
+class SecurityAndRateLimitMiddleware:
+    """Pure ASGI middleware for JWT auth, RBAC, and rate limiting (avoids BaseHTTPMiddleware streaming issues).
 
     - If JWT is enabled, validates Authorization: Bearer <token> using either HMAC secret or JWKS URL.
     - Enforces basic RBAC when enabled: read-only roles may only call whitelisted tools and resource reads.
     - Applies per-endpoint token-bucket limits (tools vs resources) with in-memory or Redis backend.
     """
 
-    def __init__(self, app: FastAPI, settings: Settings):
-        super().__init__(app)
+    def __init__(self, app: Any, settings: Settings):
+        self.app = app
         self.settings = settings
         self._jwt_enabled = bool(getattr(settings.http, "jwt_enabled", False))
         self._rbac_enabled = bool(getattr(settings.http, "rbac_enabled", True))
@@ -394,7 +416,11 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
         self._buckets[key] = (tokens, now)
         return True
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+    async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         # Perform periodic cleanup of in-memory rate limit buckets
         if self._redis is None:
             now = self._monotonic()
@@ -402,36 +428,68 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
                 self._cleanup_buckets(now)
                 self._last_cleanup = now
 
+        method = scope.get("method", "")
+        path = scope.get("path", "")
+
         # Allow CORS preflight and health endpoints
-        if request.method == "OPTIONS" or request.url.path.startswith("/health/"):
-            return await call_next(request)
+        if method == "OPTIONS" or path.startswith("/health/"):
+            await self.app(scope, receive, send)
+            return
 
-        # Only read/patch body for POST requests. GET (including SSE) must not receive http.request messages.
+        # Extract headers
+        headers = {k.decode("latin1").lower(): v.decode("latin1") for k, v in scope.get("headers", [])}
+
+        # Only read body for POST requests
         body_bytes = b""
-        if request.method.upper() == "POST":
-            try:
-                body_bytes = await request.body()
+        if method.upper() == "POST":
+            body_chunks: list[bytes] = []
+            more_body = True
+            while more_body:
+                message = await receive()
+                body_chunks.append(message.get("body", b""))
+                more_body = message.get("more_body", False)
+            body_bytes = b"".join(body_chunks)
 
-                async def _receive() -> dict:
+            # Create a new receive that returns the buffered body
+            body_sent = False
+
+            async def buffered_receive() -> dict:
+                nonlocal body_sent
+                if not body_sent:
+                    body_sent = True
                     return {"type": "http.request", "body": body_bytes, "more_body": False}
+                return {"type": "http.request", "body": b"", "more_body": False}
 
-                cast(Any, request)._receive = _receive
-            except Exception:
-                body_bytes = b""
+            receive = buffered_receive
 
-        kind, tool_name = self._classify_request(request.url.path, request.method, body_bytes)
+        kind, tool_name = self._classify_request(path, method, body_bytes)
+
+        # Get client host
+        client = scope.get("client")
+        client_host = client[0] if client else ""
+
+        # Check if authenticated via query param (already verified by BearerAuthMiddleware)
+        query_string = scope.get("query_string", b"").decode("latin1")
+        query_params = dict(pair.split("=", 1) for pair in query_string.split("&") if "=" in pair)
+        has_query_token = bool(query_params.get("access_token"))
 
         # JWT auth (if enabled)
         if self._jwt_enabled:
-            auth_header = request.headers.get("Authorization", "")
+            auth_header = headers.get("authorization", "")
             if not auth_header.startswith("Bearer "):
-                return JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+                response = JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+                await response(scope, receive, send)
+                return
             token = auth_header.split(" ", 1)[1].strip()
             claims_dict = await self._decode_jwt(token)
             if claims_dict is None:
-                return JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+                response = JSONResponse({"detail": "Unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+                await response(scope, receive, send)
+                return
             claims = cast(dict[str, Any], claims_dict)
-            request.state.jwt_claims = claims
+            # Store claims in scope for downstream access
+            scope["state"] = scope.get("state", {})
+            scope["state"]["jwt_claims"] = claims
             roles_raw = claims.get(self.settings.http.jwt_role_claim, [])
             if isinstance(roles_raw, str):
                 roles = {roles_raw}
@@ -444,28 +502,24 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
         else:
             roles = {self._default_role}
             # Elevate localhost to writer when unauthenticated localhost is allowed
-            try:
-                client_host = request.client.host if request.client else ""
-            except Exception:
-                client_host = ""
             if bool(getattr(self.settings.http, "allow_localhost_unauthenticated", False)) and client_host in {
                 "127.0.0.1",
                 "::1",
                 "localhost",
             }:
                 roles.add("writer")
+            # Elevate to writer when authenticated via query param token (already verified upstream)
+            if has_query_token:
+                roles.add("writer")
 
-        # RBAC enforcement (skip for localhost when allowed)
-        try:
-            client_host = request.client.host if request.client else ""
-        except Exception:
-            client_host = ""
+        # RBAC enforcement (skip for localhost when allowed, or when authenticated via query token)
         is_local_ok = bool(getattr(self.settings.http, "allow_localhost_unauthenticated", False)) and client_host in {
             "127.0.0.1",
             "::1",
             "localhost",
         }
-        if self._rbac_enabled and not is_local_ok and kind in {"tools", "resources"}:
+        is_query_token_ok = has_query_token
+        if self._rbac_enabled and not is_local_ok and not is_query_token_ok and kind in {"tools", "resources"}:
             is_reader = bool(roles & self._reader_roles)
             is_writer = bool(roles & self._writer_roles) or (not roles)
             if kind == "resources":
@@ -474,22 +528,28 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
                 if not tool_name:
                     # Without name, assume write-required to be safe
                     if not is_writer:
-                        return JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                        response = JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                        await response(scope, receive, send)
+                        return
                 else:
                     if tool_name in self._readonly_tools:
                         if not is_reader and not is_writer:
-                            return JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                            response = JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                            await response(scope, receive, send)
+                            return
                     else:
                         if not is_writer:
-                            return JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                            response = JSONResponse({"detail": "Forbidden"}, status_code=status.HTTP_403_FORBIDDEN)
+                            await response(scope, receive, send)
+                            return
 
         # Rate limiting
         if self.settings.http.rate_limit_enabled:
             rpm, burst = self._rate_limits_for(kind)
-            identity = request.client.host if request.client else "ip-unknown"
+            identity = client_host or "ip-unknown"
             # Prefer stable subject from JWT if present
             with contextlib.suppress(Exception):
-                maybe_claims = getattr(request.state, "jwt_claims", None)
+                maybe_claims = scope.get("state", {}).get("jwt_claims")
                 if isinstance(maybe_claims, dict):
                     sub = maybe_claims.get("sub")
                     if isinstance(sub, str) and sub:
@@ -498,9 +558,11 @@ class SecurityAndRateLimitMiddleware(BaseHTTPMiddleware):
             key = f"{kind}:{endpoint}:{identity}"
             allowed = await self._consume_bucket(key, rpm, burst)
             if not allowed:
-                return JSONResponse({"detail": "Rate limit exceeded"}, status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+                response = JSONResponse({"detail": "Rate limit exceeded"}, status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+                await response(scope, receive, send)
+                return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)
 
 
 async def readiness_check() -> None:
@@ -878,8 +940,8 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         for task in tasks:
             task.cancel()
         for task in tasks:
-            with contextlib.suppress(Exception):
-                await task
+            with contextlib.suppress(BaseException):
+                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
 
     from contextlib import asynccontextmanager
 
@@ -901,15 +963,34 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     if settings.http.request_log_enabled:
         import time as _time
 
-        class RequestLoggingMiddleware(BaseHTTPMiddleware):
-            async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        class RequestLoggingMiddleware:
+            """Pure ASGI middleware for request logging (avoids BaseHTTPMiddleware streaming issues)."""
+
+            def __init__(self, app: Any) -> None:
+                self.app = app
+
+            async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+                if scope["type"] != "http":
+                    await self.app(scope, receive, send)
+                    return
+
                 start = _time.time()
-                response = await call_next(request)
+                status_code = 0
+
+                async def send_wrapper(message: dict) -> None:
+                    nonlocal status_code
+                    if message["type"] == "http.response.start":
+                        status_code = message.get("status", 0)
+                    await send(message)
+
+                await self.app(scope, receive, send_wrapper)
+
                 dur_ms = int((_time.time() - start) * 1000)
-                method = request.method
-                path = request.url.path
-                status_code = getattr(response, "status_code", 0)
-                client = request.client.host if request.client else "-"
+                method = scope.get("method", "")
+                path = scope.get("path", "")
+                client_info = scope.get("client")
+                client = client_info[0] if client_info else "-"
+
                 with contextlib.suppress(Exception):
                     structlog.get_logger("http").info(
                         "request",
@@ -943,7 +1024,6 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     console.print(Panel(body, title=title, border_style="dim"))
                 except Exception:
                     print(f"http method={method} path={path} status={status_code} ms={dur_ms} client={client}")
-                return response
 
         app_any = cast(Any, fastapi_app)
         app_any.add_middleware(RequestLoggingMiddleware)
@@ -1010,21 +1090,23 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     async def oauth_meta_root_mcp() -> JSONResponse:
         return JSONResponse({"mcp_oauth": False})
 
-    # A minimal stateless ASGI adapter that does not rely on ASGI lifespan management
-    # and runs a fresh StreamableHTTP transport per request.
-    from mcp.server.streamable_http import StreamableHTTPServerTransport
+    # Thin ASGI wrapper that fixes Accept/Content-Type headers before delegating
+    # to the SDK's built-in Starlette MCP app.  The SDK's
+    # StreamableHTTPSessionManager correctly synchronises per-request
+    # transports via task_group.start(), avoiding the zero-buffer
+    # memory-stream deadlock that occurred when StatelessMCPASGIApp called
+    # _mcp_server.run() directly (bypassing the lifespan manager).
+    class _MCPHeaderFixupApp:
+        """Ensure Accept / Content-Type headers before forwarding to mcp_http_app."""
 
-    class StatelessMCPASGIApp:
-        def __init__(self, mcp_server) -> None:
-            self._server = mcp_server
+        def __init__(self, inner_app: Any) -> None:
+            self._app = inner_app
 
         async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
             if scope.get("type") != "http":
-                res = JSONResponse({"detail": "Not Found"}, status_code=404)
-                await res(scope, receive, send)
+                await self._app(scope, receive, send)
                 return
 
-            # Ensure Accept and Content-Type headers are present per StreamableHTTP expectations
             headers = list(scope.get("headers") or [])
 
             def _has_header(key: bytes) -> bool:
@@ -1038,33 +1120,11 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 headers.append((b"content-type", b"application/json"))
             new_scope = dict(scope)
             new_scope["headers"] = headers
-
-            http_transport = StreamableHTTPServerTransport(
-                mcp_session_id=None,
-                is_json_response_enabled=True,
-                event_store=None,
-                security_settings=None,
-            )
-
-            async with http_transport.connect() as streams:
-                read_stream, write_stream = streams
-                server_task = asyncio.create_task(
-                    self._server._mcp_server.run(
-                        read_stream,
-                        write_stream,
-                        self._server._mcp_server.create_initialization_options(),
-                        stateless=True,
-                    )
-                )
-                # No response wrapping/unwrapping - just pass through MCP responses as-is
-                # MCP clients can handle JSON-RPC format properly
-                try:
-                    await http_transport.handle_request(new_scope, receive, send)
-                finally:
-                    with contextlib.suppress(Exception):
-                        await http_transport.terminate()
-                    with contextlib.suppress(Exception):
-                        await server_task
+            # Normalise empty path to "/" so the SDK's Starlette route matches
+            # (Starlette Mount strips the prefix, yielding "" for exact matches)
+            if not new_scope.get("path"):
+                new_scope["path"] = "/"
+            await self._app(new_scope, receive, send)
 
     # Mount at both '/base' and '/base/' to tolerate either form from clients/tests
     mount_base = settings.http.path or "/mcp"
@@ -1072,7 +1132,7 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
         mount_base = "/" + mount_base
     base_no_slash = mount_base.rstrip("/") or "/"
     base_with_slash = base_no_slash if base_no_slash == "/" else base_no_slash + "/"
-    stateless_app = StatelessMCPASGIApp(server)
+    stateless_app = _MCPHeaderFixupApp(mcp_http_app)
     with contextlib.suppress(Exception):
         fastapi_app.mount(base_no_slash, stateless_app)
     with contextlib.suppress(Exception):
@@ -1085,12 +1145,12 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     @fastapi_app.post(base_no_slash)
     async def _base_passthrough(request: Request) -> JSONResponse:
         # Re-dispatch to mounted stateless app by calling it directly
-        response_body: dict[str, Any] = {}
+        body_chunks: list[bytes] = []
         status_code = 200
         headers: dict[str, str] = {}
 
         async def _send(message: MutableMapping[str, Any]) -> None:
-            nonlocal response_body, status_code, headers
+            nonlocal status_code, headers
             if message.get("type") == "http.response.start":
                 status_code = int(message.get("status", 200))
                 hdrs = message.get("headers") or []
@@ -1098,10 +1158,8 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                     headers[k.decode("latin1")] = v.decode("latin1")
             elif message.get("type") == "http.response.body":
                 body = message.get("body") or b""
-                try:
-                    response_body = json.loads(body.decode("utf-8")) if body else {}
-                except Exception:
-                    response_body = {}
+                if body:
+                    body_chunks.append(body)
 
         # If localhost and allow_localhost_unauthenticated, synthesize Authorization header automatically
         scope = dict(request.scope)
@@ -1116,11 +1174,19 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
                 scope_headers.append((b"authorization", f"Bearer {settings.http.bearer_token}".encode("latin1")))
             scope["headers"] = scope_headers
         await stateless_app(
-            {**scope, "path": base_with_slash},  # ensure mounted path
+            {**scope, "path": "/"},  # sub-app expects path relative to mount
             request.receive,
             _send,
         )
-        return JSONResponse(response_body, status_code=status_code, headers=headers)
+        # Accumulate all body chunks and parse as JSON
+        full_body = b"".join(body_chunks)
+        try:
+            response_body = json.loads(full_body.decode("utf-8")) if full_body else {}
+        except Exception:
+            response_body = {}
+        # Remove content-length as JSONResponse will set its own
+        filtered_headers = {k: v for k, v in headers.items() if k.lower() != "content-length"}
+        return JSONResponse(response_body, status_code=status_code, headers=filtered_headers)
 
     # ----- Simple SSR Mail UI -----
     def _register_mail_ui() -> None:

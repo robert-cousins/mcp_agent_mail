@@ -23,12 +23,12 @@ async def test_whois_and_projects_resources(isolated_env):
         assert who.data.get("name") == "BlueLake"
         assert who.data.get("program") == "codex"
 
-        # Projects list
-        blocks = await client.read_resource("resource://projects")
+        # Projects list (FastMCP 2.13+ requires query param for template URIs)
+        blocks = await client.read_resource("resource://projects?format=json")
         assert blocks and "backend" in (blocks[0].text or "")
 
         # Project detail
-        blocks2 = await client.read_resource("resource://project/backend")
+        blocks2 = await client.read_resource("resource://project/backend?format=json")
         assert blocks2 and "BlueLake" in (blocks2[0].text or "")
 
 

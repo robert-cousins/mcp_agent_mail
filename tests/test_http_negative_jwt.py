@@ -5,11 +5,13 @@ from typing import Any
 
 import pytest
 from authlib.jose import JsonWebKey, jwt
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import build_http_app
+from tests._http_helpers import http_test_client
+
+pytestmark = pytest.mark.http
 
 
 def _rpc(method: str, params: dict) -> dict[str, Any]:
@@ -44,8 +46,7 @@ async def test_http_jwt_bad_kid_rejected(isolated_env, monkeypatch):
     app = build_http_app(settings, server)
     import httpx
     monkeypatch.setattr(httpx.AsyncClient, "get", fake_get, raising=False)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         headers = {"Authorization": f"Bearer {token}"}
         r = await client.post(settings.http.path, headers=headers, json=_rpc("tools/call", {"name": "health_check", "arguments": {}}))
         assert r.status_code == 401
@@ -65,8 +66,7 @@ async def test_http_jwt_wrong_alg_rejected(isolated_env, monkeypatch):
 
     server = build_mcp_server()
     app = build_http_app(settings, server)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         headers = {"Authorization": f"Bearer {token}"}
         r = await client.post(settings.http.path, headers=headers, json=_rpc("tools/call", {"name": "health_check", "arguments": {}}))
         # Should be 401 due to bad algorithm
@@ -87,8 +87,7 @@ async def test_http_jwt_missing_aud_iss_rejected_when_configured(isolated_env, m
     token = jwt.encode({"alg": "HS256"}, {"sub": "u1", settings.http.jwt_role_claim: "reader"}, settings.http.jwt_secret).decode("utf-8")
     server = build_mcp_server()
     app = build_http_app(settings, server)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         headers = {"Authorization": f"Bearer {token}"}
         r = await client.post(settings.http.path, headers=headers, json=_rpc("tools/call", {"name": "health_check", "arguments": {}}))
         assert r.status_code == 401
@@ -102,9 +101,7 @@ async def test_http_jwt_malformed_token(isolated_env, monkeypatch):
     settings = _config.get_settings()
     server = build_mcp_server()
     app = build_http_app(settings, server)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         headers = {"Authorization": "Bearer not.a.jwt"}
         r = await client.post(settings.http.path, headers=headers, json=_rpc("tools/call", {"name": "health_check", "arguments": {}}))
         assert r.status_code == 401
-

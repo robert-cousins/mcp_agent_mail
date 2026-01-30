@@ -235,7 +235,7 @@ async def test_macro_contact_handshake_registers_missing_target(isolated_env):
             },
         )
 
-        agents_blocks = await client.read_resource(f"resource://agents/{slugify(frontend)}")
+        agents_blocks = await client.read_resource(f"resource://agents/{slugify(frontend)}?format=json")
         raw = agents_blocks[0].text if agents_blocks else "{}"
         data = json.loads(raw)
         names = {agent.get("name") for agent in data.get("agents", [])}

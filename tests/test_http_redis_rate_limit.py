@@ -6,11 +6,13 @@ from types import ModuleType
 from typing import Any, cast
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.http import build_http_app
+from tests._http_helpers import http_test_client
+
+pytestmark = pytest.mark.http
 
 
 def _rpc(method: str, params: dict) -> dict:
@@ -46,8 +48,7 @@ async def test_rate_limit_redis_backend_path(isolated_env, monkeypatch):
     server = build_mcp_server()
     app = build_http_app(settings, server)
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with http_test_client(app) as client:
         # Call a resource twice; redis path should be exercised and allow both
         r1 = await client.post(settings.http.path, json=_rpc("resources/read", {"uri": "resource://projects"}))
         assert r1.status_code in (200, 429)

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import pytest
 from fastapi import FastAPI
 
 from mcp_agent_mail import config as _config
 from mcp_agent_mail.http import SecurityAndRateLimitMiddleware, _decode_jwt_header_segment
+
+pytestmark = pytest.mark.http
 
 
 def test_decode_jwt_header_segment_variants():

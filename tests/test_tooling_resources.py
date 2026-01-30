@@ -27,7 +27,7 @@ async def test_tooling_directory_and_metrics_populate(isolated_env):
             {"project_key": project_slug, "program": "codex", "model": "gpt-5"},
         )
 
-        project_blocks = await client.read_resource(f"resource://project/{project_slug}")
+        project_blocks = await client.read_resource(f"resource://project/{project_slug}?format=json")
         assert project_blocks and project_blocks[0].text
         project_payload = json.loads(project_blocks[0].text)
         agents = project_payload.get("agents") or []
@@ -45,12 +45,12 @@ async def test_tooling_directory_and_metrics_populate(isolated_env):
             },
         )
         # Directory
-        blocks = await client.read_resource("resource://tooling/directory")
+        blocks = await client.read_resource("resource://tooling/directory?format=json")
         assert blocks
         body = blocks[0].text or ""
         assert "messaging" in body or "file_reservations" in body
         # Metrics
-        blocks2 = await client.read_resource("resource://tooling/metrics")
+        blocks2 = await client.read_resource("resource://tooling/metrics?format=json")
         assert blocks2 and "tools" in (blocks2[0].text or "")
 
 
@@ -68,7 +68,7 @@ async def test_tooling_recent_filters(isolated_env):
             {"project_key": project_slug, "program": "codex", "model": "gpt-5"},
         )
 
-        project_blocks = await client.read_resource(f"resource://project/{project_slug}")
+        project_blocks = await client.read_resource(f"resource://project/{project_slug}?format=json")
         assert project_blocks and project_blocks[0].text
         project_payload = json.loads(project_blocks[0].text)
         agents = project_payload.get("agents") or []
@@ -109,7 +109,7 @@ async def test_tooling_locks_resource(isolated_env):
     metadata_path.write_text(json.dumps({"pid": os.getpid(), "created_ts": time.time()}), encoding="utf-8")
 
     async with Client(server) as client:
-        blocks = await client.read_resource("resource://tooling/locks")
+        blocks = await client.read_resource("resource://tooling/locks?format=json")
         assert blocks
         payload = json.loads(blocks[0].text or "{}")
         assert payload.get("summary", {}).get("total") == 1
