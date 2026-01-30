@@ -68,11 +68,11 @@ jobs:
 
       - name: Run fast unit tests
         shell: bash
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -vv --maxfail=3 --durations=25 --timeout=30 --timeout-method=thread \
+          uv run -m pytest -v --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
             -m "not http and not slow" \
             --ignore=tests/benchmarks/ \
             --ignore=tests/e2e/ \
@@ -128,11 +128,11 @@ jobs:
 
       - name: Run fast unit tests
         shell: bash
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -vv --maxfail=3 --durations=25 --timeout=30 --timeout-method=thread \
+          uv run -m pytest -v --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
             -m "not http and not slow" \
             --ignore=tests/benchmarks/ \
             --ignore=tests/e2e/ \
