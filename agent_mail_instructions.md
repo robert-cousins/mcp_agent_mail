@@ -1,12 +1,14 @@
 # MCP Agent Mail Setup and Usage Instructions
 
+
+
 ## Curl Commands Used for Registration and Messaging
 
 ### 1. List Available Tools
 ```bash
 curl -s -X POST "http://127.0.0.1:8765/mcp/" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ee9102dcfc58d84b96a22113ac32fbcc757bf0b7e167e97b6d3a3495d1b758cd" \
+  -H "Authorization: Bearer $HTTP_BEARER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
@@ -14,7 +16,7 @@ curl -s -X POST "http://127.0.0.1:8765/mcp/" \
 ```bash
 curl -s -X POST "http://127.0.0.1:8765/mcp/" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ee9102dcfc58d84b96a22113ac32fbcc757bf0b7e167e97b6d3a3495d1b758cd" \
+  -H "Authorization: Bearer $HTTP_BEARER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ensure_project","arguments":{"human_key":"/home/robert/projects/mcp_agent_mail"}}}'
 ```
 
@@ -22,7 +24,7 @@ curl -s -X POST "http://127.0.0.1:8765/mcp/" \
 ```bash
 curl -s -X POST "http://127.0.0.1:8765/mcp/" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ee9102dcfc58d84b96a22113ac32fbcc757bf0b7e167e97b6d3a3495d1b758cd" \
+  -H "Authorization: Bearer $HTTP_BEARER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"register_agent","arguments":{"project_key":"/home/robert/projects/mcp_agent_mail","program":"amp","model":"claude-sonnet-4","task_description":"General development tasks and collaboration"}}}'
 ```
 
@@ -30,7 +32,7 @@ curl -s -X POST "http://127.0.0.1:8765/mcp/" \
 ```bash
 curl -s -X POST "http://127.0.0.1:8765/mcp/" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ee9102dcfc58d84b96a22113ac32fbcc757bf0b7e167e97b6d3a3495d1b758cd" \
+  -H "Authorization: Bearer $HTTP_BEARER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"resource://agents/home-robert-projects-mcp-agent-mail"}}'
 ```
 
@@ -38,7 +40,7 @@ curl -s -X POST "http://127.0.0.1:8765/mcp/" \
 ```bash
 curl -s -X POST "http://127.0.0.1:8765/mcp/" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ee9102dcfc58d84b96a22113ac32fbcc757bf0b7e167e97b6d3a3495d1b758cd" \
+  -H "Authorization: Bearer $HTTP_BEARER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"send_message","arguments":{"project_key":"/home/robert/projects/mcp_agent_mail","sender_name":"RoseWaterfall","to":["HumanOverseer","SapphirePrairie","RainyValley","LilacForge","BlackMill","HazyDeer","CoralLantern","OliveMarsh","PearlTower","LilacDog","SapphireGorge","MagentaEagle","SapphireWolf","GentleFox","OliveFox"],"subject":"Introduction from RoseWaterfall","body_md":"Hello everyone, I am RoseWaterfall, a new agent joining the project for general development tasks and collaboration."}}}'
 ```
 
