@@ -196,6 +196,7 @@ jobs:
         timeout-minutes: 45
         env:
           PYTHONUTF8: "1"
+          TEST_PARANOID_CLEANUP: "1"  # Enable expensive leak detection in nightly
         run: |
           uv run -m pytest -vv --maxfail=3 --durations=25 --timeout=60 --timeout-method=thread \
             --ignore=tests/benchmarks/ \

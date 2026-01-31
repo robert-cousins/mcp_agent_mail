@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import gc
+import os
 from pathlib import Path
 
 import psutil
@@ -12,6 +13,11 @@ from mcp_agent_mail.storage import clear_repo_cache
 
 # CPU overload threshold - skip benchmark tests if ALL cores are at this level
 CPU_OVERLOAD_THRESHOLD = 95.0
+
+# Paranoid cleanup mode: enables expensive GC scanning and Repo close sweeps.
+# Disabled by default for fast CI; enabled in nightly for leak detection.
+# Set TEST_PARANOID_CLEANUP=1 to enable.
+_PARANOID_CLEANUP = os.environ.get("TEST_PARANOID_CLEANUP", "0") == "1"
 
 
 def is_cpu_overloaded() -> bool:
@@ -111,83 +117,92 @@ def isolated_env(tmp_path, monkeypatch):
     try:
         yield
     finally:
-        # Close all cached Repo objects first (prevents file handle leaks)
+        # Always do: cheap cleanup + reset DB state + file deletion
         clear_repo_cache()
-
-        # Suppress ResourceWarnings during cleanup since Python 3.14 warns about resources
-        # being cleaned up by GC, which is exactly what we want
-        import warnings
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=ResourceWarning)
-            try:
-                import time
-
-                from git import Repo
-
-                # Multiple GC passes to ensure full cleanup of any non-cached repos
-                for _ in range(2):
-                    gc.collect()
-                    # Close any Repo instances that might still be open
-                    for obj in gc.get_objects():
-                        if isinstance(obj, Repo):
-                            with contextlib.suppress(Exception):
-                                obj.close()
-
-                # Give subprocesses time to terminate
-                time.sleep(0.05)
-
-                # Final GC pass
-                gc.collect()
-            except Exception:
-                pass
-
-            # Force another GC to clean up any remaining references
-            gc.collect()
-
         clear_settings_cache()
         reset_database_state()
 
+        # Always delete DB file and storage (cheap, prevents disk bloat)
         if db_path.exists():
-            db_path.unlink()
-        storage_root = tmp_path / "storage"
+            with contextlib.suppress(Exception):
+                db_path.unlink()
         if storage_root.exists():
-            for path in storage_root.rglob("*"):
-                if path.is_file():
-                    path.unlink()
-            for path in sorted(storage_root.rglob("*"), reverse=True):
-                if path.is_dir():
-                    path.rmdir()
-            if storage_root.exists():
-                storage_root.rmdir()
+            with contextlib.suppress(Exception):
+                for path in storage_root.rglob("*"):
+                    if path.is_file():
+                        path.unlink()
+                for path in sorted(storage_root.rglob("*"), reverse=True):
+                    if path.is_dir():
+                        path.rmdir()
+                if storage_root.exists():
+                    storage_root.rmdir()
+
+        # Only in paranoid mode: expensive GC scanning for leaked Repo handles
+        if _PARANOID_CLEANUP:
+            import warnings
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=ResourceWarning)
+                try:
+                    import time
+
+                    from git import Repo
+
+                    # Multiple GC passes to ensure full cleanup of any non-cached repos
+                    for _ in range(2):
+                        gc.collect()
+                        # Close any Repo instances that might still be open
+                        for obj in gc.get_objects():
+                            if isinstance(obj, Repo):
+                                with contextlib.suppress(Exception):
+                                    obj.close()
+
+                    # Give subprocesses time to terminate
+                    time.sleep(0.05)
+
+                    # Final GC pass
+                    gc.collect()
+                except Exception:
+                    pass
+
+                # Force another GC to clean up any remaining references
+                gc.collect()
 
 
 @pytest.fixture(autouse=True)
-def _global_resource_cleanup():
+def _global_resource_cleanup(request):
     """Best-effort global cleanup to avoid FD leaks under low ulimit.
 
     Some tests don't opt into `isolated_env` but still touch the global engine/repo cache.
     With RLIMIT_NOFILE=256 (common on macOS), a small amount of leakage can cascade into
     EMFILE failures later in the suite.
+
+    In fast mode (default): only cheap cleanup for tests not using isolated_env.
+    In paranoid mode (TEST_PARANOID_CLEANUP=1): full cleanup including GC scans.
     """
     yield
 
-    # Close cached repo handles first.
+    # Check if isolated_env already handled cleanup for this test
+    used_isolated = "isolated_env" in request.fixturenames
+
+    # Always do cheap cleanup
     with contextlib.suppress(Exception):
         clear_repo_cache()
-
-    # Dispose engine/pool state across tests.
-    with contextlib.suppress(Exception):
-        reset_database_state()
-
     with contextlib.suppress(Exception):
         clear_settings_cache()
 
-    # Extra safety: close any Repo objects that escaped caching.
-    with contextlib.suppress(Exception):
-        from git import Repo
+    # For tests NOT using isolated_env: reset DB state to prevent contamination
+    if not used_isolated:
+        with contextlib.suppress(Exception):
+            reset_database_state()
 
-        gc.collect()
-        for obj in gc.get_objects():
-            if isinstance(obj, Repo):
-                with contextlib.suppress(Exception):
-                    obj.close()
+    # Only in paranoid mode AND for tests not using isolated_env: expensive GC scan
+    if _PARANOID_CLEANUP and not used_isolated:
+        with contextlib.suppress(Exception):
+            from git import Repo
+
+            gc.collect()
+            for obj in gc.get_objects():
+                if isinstance(obj, Repo):
+                    with contextlib.suppress(Exception):
+                        obj.close()
