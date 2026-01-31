@@ -16,6 +16,15 @@ on:
     # Run full suite nightly at 2am UTC
     - cron: '0 2 * * *'
 
+# Cancel in-progress runs when a new commit is pushed to the same branch
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimal permissions for security
+permissions:
+  contents: read
+
 jobs:
   # Fast CI: runs on every push/PR (Ubuntu only for PRs, +macOS on main)
   # Excludes HTTP lifecycle and slow tests for quick feedback
@@ -47,9 +56,9 @@ jobs:
           path: |
             ~/.cache/uv
             .venv
-          key: ci-uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          key: ci-uv-${{ runner.os }}-py312-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ci-uv-${{ runner.os }}-
+            ci-uv-${{ runner.os }}-py312-
 
       - name: Sync dependencies
         shell: bash
@@ -68,11 +77,11 @@ jobs:
 
       - name: Run fast unit tests
         shell: bash
-        timeout-minutes: 40
+        timeout-minutes: 15
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -v --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
+          uv run -m pytest -q --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
             -m "not http and not slow" \
             --ignore=tests/benchmarks/ \
             --ignore=tests/e2e/ \
@@ -107,9 +116,9 @@ jobs:
           path: |
             ~/.cache/uv
             .venv
-          key: ci-uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          key: ci-uv-${{ runner.os }}-py312-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ci-uv-${{ runner.os }}-
+            ci-uv-${{ runner.os }}-py312-
 
       - name: Sync dependencies
         shell: bash
@@ -128,11 +137,11 @@ jobs:
 
       - name: Run fast unit tests
         shell: bash
-        timeout-minutes: 40
+        timeout-minutes: 15
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run -m pytest -v --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
+          uv run -m pytest -q --maxfail=3 --durations=20 --timeout=30 --timeout-method=thread \
             -m "not http and not slow" \
             --ignore=tests/benchmarks/ \
             --ignore=tests/e2e/ \
@@ -172,9 +181,9 @@ jobs:
           path: |
             ~/.cache/uv
             .venv
-          key: ci-uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          key: ci-uv-${{ runner.os }}-py312-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ci-uv-${{ runner.os }}-
+            ci-uv-${{ runner.os }}-py312-
 
       - name: Sync dependencies
         shell: bash
