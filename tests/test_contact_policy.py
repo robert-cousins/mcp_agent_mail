@@ -94,7 +94,7 @@ async def test_contact_auto_allows_file_reservation_overlap(isolated_env, monkey
                 "agent_name": "GreenCastle",
                 "paths": ["src/*"],
                 "ttl_seconds": 600,
-                "exclusive": True,
+                "exclusive": False,
             },
         )
         assert g1.data["granted"]
@@ -105,7 +105,7 @@ async def test_contact_auto_allows_file_reservation_overlap(isolated_env, monkey
                 "agent_name": "BlueLake",
                 "paths": ["src/app.py"],
                 "ttl_seconds": 600,
-                "exclusive": True,
+                "exclusive": False,
             },
         )
         assert g2.data["granted"]

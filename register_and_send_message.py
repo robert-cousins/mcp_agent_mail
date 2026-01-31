@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Server configuration
 SERVER_URL = "http://127.0.0.1:8765/mcp/"
-BEARER_TOKEN = "ee9102dcfc58d84b96a22113ac32fbcc757bf0b7e167e97b6d3a3495d1b758cd"
+BEARER_TOKEN = "HTTP_BEARER_TOKEN"
 
 def call_mcp_tool(tool_name: str, arguments: dict) -> dict:
     """Call an MCP tool via HTTP JSON-RPC using curl."""
