@@ -1,8 +1,10 @@
-import sys
 import argparse
 import json
+import sys
+
 from mcp_agent_mail.macros.ci_gate import ci_gate
 from mcp_agent_mail.macros.send_ready_report import send_ready_report
+
 
 def main():
     parser = argparse.ArgumentParser(description="MCP Agent Mail Macros CLI")

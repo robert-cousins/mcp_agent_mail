@@ -1,0 +1,238 @@
+Fast Tests (ubuntu)	Set up job	﻿2026-01-31T08:59:48.1797741Z Current runner version: '2.331.0'
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1822586Z ##[group]Runner Image Provisioner
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1823438Z Hosted Compute Agent
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1824097Z Version: 20260123.484
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1824708Z Commit: 6bd6555ca37d84114959e1c76d2c01448ff61c5d
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1825373Z Build Date: 2026-01-23T19:41:17Z
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1826097Z Worker ID: {baee223a-1971-43d8-b4e8-1a79d552a876}
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1826822Z Azure Region: westus
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1827332Z ##[endgroup]
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1828842Z ##[group]Operating System
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1829442Z Ubuntu
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1829918Z 24.04.3
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1830395Z LTS
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1830963Z ##[endgroup]
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1831441Z ##[group]Runner Image
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1832341Z Image: ubuntu-24.04
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1832853Z Version: 20260126.10.1
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1833855Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260126.10/images/ubuntu/Ubuntu2404-Readme.md
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1835572Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260126.10
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1836480Z ##[endgroup]
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1837531Z ##[group]GITHUB_TOKEN Permissions
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1839556Z Contents: read
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1840097Z Metadata: read
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1840728Z ##[endgroup]
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1842955Z Secret source: Actions
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.1843691Z Prepare workflow directory
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.2178550Z Prepare all required actions
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.2235872Z Getting action download info
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.7191436Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.8243941Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:48.9048569Z Download action repository 'actions/cache@v4' (SHA:0057852bfaa89a56745cba8c7296529d2fc39830)
+Fast Tests (ubuntu)	Set up job	2026-01-31T08:59:49.1061355Z Complete job name: Fast Tests (ubuntu)
+Fast Tests (ubuntu)	Checkout	﻿2026-01-31T08:59:49.1785138Z ##[group]Run actions/checkout@v4
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1786035Z with:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1786513Z   repository: robert-cousins/mcp_agent_mail
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1787254Z   token: ***
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1787667Z   ssh-strict: true
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1788075Z   ssh-user: git
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1788500Z   persist-credentials: true
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1788981Z   clean: true
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1789410Z   sparse-checkout-cone-mode: true
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1789930Z   fetch-depth: 1
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1790342Z   fetch-tags: false
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1790828Z   show-progress: true
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1791260Z   lfs: false
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1791857Z   submodules: false
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1792301Z   set-safe-directory: true
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.1793184Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2876427Z Syncing repository: robert-cousins/mcp_agent_mail
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2878282Z ##[group]Getting Git version info
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2879116Z Working directory is '/home/runner/work/mcp_agent_mail/mcp_agent_mail'
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2880274Z [command]/usr/bin/git version
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2958163Z git version 2.52.0
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2984113Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2997774Z Temporarily overriding HOME='/home/runner/work/_temp/7c192788-c649-4ef5-8abe-4aeceb2bf9a6' before making global git config changes
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.2999343Z Adding repository directory to the temporary git global config as a safe directory
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3002941Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mcp_agent_mail/mcp_agent_mail
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3040438Z Deleting the contents of '/home/runner/work/mcp_agent_mail/mcp_agent_mail'
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3044042Z ##[group]Initializing the repository
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3048012Z [command]/usr/bin/git init /home/runner/work/mcp_agent_mail/mcp_agent_mail
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3154625Z hint: Using 'master' as the name for the initial branch. This default branch name
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3155985Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3158224Z hint: to use in all of your new repositories, which will suppress this warning,
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3159824Z hint: call:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3160573Z hint:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3161482Z hint: 	git config --global init.defaultBranch <name>
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3162514Z hint:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3163186Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3164300Z hint: 'development'. The just-created branch can be renamed via this command:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3165142Z hint:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3165698Z hint: 	git branch -m <name>
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3166185Z hint:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3166868Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3168042Z Initialized empty Git repository in /home/runner/work/mcp_agent_mail/mcp_agent_mail/.git/
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3171038Z [command]/usr/bin/git remote add origin https://github.com/robert-cousins/mcp_agent_mail
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3202999Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3203776Z ##[group]Disabling automatic garbage collection
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3206912Z [command]/usr/bin/git config --local gc.auto 0
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3233635Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3234339Z ##[group]Setting up auth
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3240406Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3269207Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3601400Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3632340Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3849787Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.3888324Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.4107450Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.4141796Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.4151478Z ##[group]Fetching the repository
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:49.4154362Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a575d66c3f30c29f2adef9bdc16bbafc03326ce0:refs/remotes/pull/4/merge
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5080719Z From https://github.com/robert-cousins/mcp_agent_mail
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5082617Z  * [new ref]         a575d66c3f30c29f2adef9bdc16bbafc03326ce0 -> pull/4/merge
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5113165Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5115040Z ##[group]Determining the checkout info
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5117063Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5121174Z [command]/usr/bin/git sparse-checkout disable
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5162442Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5189163Z ##[group]Checking out the ref
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5193101Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/4/merge
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5734881Z Note: switching to 'refs/remotes/pull/4/merge'.
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5736118Z 
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5737139Z You are in 'detached HEAD' state. You can look around, make experimental
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5739668Z changes and commit them, and you can discard any commits you make in this
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5742422Z state without impacting any branches by switching back to a branch.
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5743892Z 
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5744559Z If you want to create a new branch to retain commits you create, you may
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5746122Z do so (now or later) by using -c with the switch command. Example:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5747487Z 
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5748178Z   git switch -c <new-branch-name>
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5748796Z 
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5749139Z Or undo this operation with:
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5749697Z 
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5749977Z   git switch -
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5750390Z 
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5751133Z Turn off this advice by setting config variable advice.detachedHead to false
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5752486Z 
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5753806Z HEAD is now at a575d66 Merge f06fe083a17eafc266332b70d707e75259454ed7 into 0dd77b4c09bab8eff1da2905f170005a315756b6
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5757833Z ##[endgroup]
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5784522Z [command]/usr/bin/git log -1 --format=%H
+Fast Tests (ubuntu)	Checkout	2026-01-31T08:59:50.5806007Z a575d66c3f30c29f2adef9bdc16bbafc03326ce0
+Fast Tests (ubuntu)	Set up Python 3.12	﻿2026-01-31T08:59:50.6141846Z ##[group]Run actions/setup-python@v5
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6143128Z with:
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6143977Z   python-version: 3.12
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6145002Z   check-latest: false
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6146261Z   token: ***
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6147176Z   update-environment: true
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6148310Z   allow-prereleases: false
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6149378Z   freethreaded: false
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.6150354Z ##[endgroup]
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.7804927Z ##[group]Installed versions
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.7904955Z Successfully set up CPython (3.12.12)
+Fast Tests (ubuntu)	Set up Python 3.12	2026-01-31T08:59:50.7907506Z ##[endgroup]
+Fast Tests (ubuntu)	Install uv	﻿2026-01-31T08:59:50.8128031Z ##[group]Run curl -LsSf https://astral.sh/uv/install.sh | sh
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8129753Z [36;1mcurl -LsSf https://astral.sh/uv/install.sh | sh[0m
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8131191Z [36;1mecho "$HOME/.local/bin" >> $GITHUB_PATH[0m
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8132589Z [36;1muv --version[0m
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8308009Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8309370Z env:
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8310346Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8312299Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8314081Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8315667Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8317255Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8318866Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:50.8320191Z ##[endgroup]
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:51.2683798Z downloading uv 0.9.28 x86_64-unknown-linux-gnu
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:51.6033182Z no checksums to verify
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:51.9935875Z installing to /home/runner/.local/bin
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:51.9977836Z   uv
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:51.9999486Z   uvx
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:51.9999753Z everything's installed!
+Fast Tests (ubuntu)	Install uv	2026-01-31T08:59:52.0109457Z uv 0.9.28
+Fast Tests (ubuntu)	Cache uv dependencies	﻿2026-01-31T08:59:52.0746090Z ##[group]Run actions/cache@v4
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0746390Z with:
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0746579Z   path: ~/.cache/uv
+Fast Tests (ubuntu)	Cache uv dependencies	.venv
+Fast Tests (ubuntu)	Cache uv dependencies	
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0746998Z   key: ci-uv-Linux-py312-d946fdb428eae5472adb417341f0a8815c65a560c32aa891992803105a525431
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0747465Z   restore-keys: ci-uv-Linux-py312-
+Fast Tests (ubuntu)	Cache uv dependencies	
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0747756Z   enableCrossOsArchive: false
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0748026Z   fail-on-cache-miss: false
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0748247Z   lookup-only: false
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0748475Z   save-always: false
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0748661Z env:
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0748901Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0749326Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0749730Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0750097Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0750456Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0750864Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.0751185Z ##[endgroup]
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:52.4805935Z Cache hit for: ci-uv-Linux-py312-d946fdb428eae5472adb417341f0a8815c65a560c32aa891992803105a525431
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:53.7625172Z Received 4194304 of 101532169 (4.1%), 4.0 MBs/sec
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:54.4928715Z Received 101532169 of 101532169 (100.0%), 55.9 MBs/sec
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:54.4931446Z Cache Size: ~97 MB (101532169 B)
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:54.4977311Z [command]/usr/bin/tar -xf /home/runner/work/_temp/e2e1989e-90c9-4333-ba69-e90b4cd2e2c1/cache.tzst -P -C /home/runner/work/mcp_agent_mail/mcp_agent_mail --use-compress-program unzstd
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:55.5274032Z Cache restored successfully
+Fast Tests (ubuntu)	Cache uv dependencies	2026-01-31T08:59:55.5570796Z Cache restored from key: ci-uv-Linux-py312-d946fdb428eae5472adb417341f0a8815c65a560c32aa891992803105a525431
+Fast Tests (ubuntu)	Sync dependencies	﻿2026-01-31T08:59:55.5696388Z ##[group]Run uv sync --dev
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5696709Z [36;1muv sync --dev[0m
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5729556Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5729891Z env:
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5730148Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5730588Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5731013Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5731415Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5731900Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5732276Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5732587Z ##[endgroup]
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.5961917Z Resolved 156 packages in 0.77ms
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:55.6030090Z    Building mcp-agent-mail @ file:///home/runner/work/mcp_agent_mail/mcp_agent_mail
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:56.9816781Z       Built mcp-agent-mail @ file:///home/runner/work/mcp_agent_mail/mcp_agent_mail
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:56.9832887Z Prepared 1 package in 1.38s
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:56.9837737Z Uninstalled 1 package in 0.37ms
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:56.9846069Z Installed 1 package in 0.80ms
+Fast Tests (ubuntu)	Sync dependencies	2026-01-31T08:59:56.9847042Z  ~ mcp-agent-mail==0.3.0 (from file:///home/runner/work/mcp_agent_mail/mcp_agent_mail)
+Fast Tests (ubuntu)	Lint (ruff)	﻿2026-01-31T08:59:56.9962867Z ##[group]Run uv run ruff check
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9963169Z [36;1muv run ruff check[0m
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9995357Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9995690Z env:
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9995943Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9996373Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9996791Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9997174Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9997552Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9997930Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:56.9998246Z ##[endgroup]
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0986544Z W291 [*] Trailing whitespace
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0987499Z    --> tests/test_server.py:166:78
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0988054Z     |
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0988848Z 164 |         assert any(entry["path_pattern"] == "src/app.py" and entry["released_ts"] is not None for entry in payload)
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0989765Z 165 |
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0990270Z 166 |         # After Alpha releases, only Beta might have one if it had taken one. 
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0990993Z     |                                                                              ^
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0991586Z 167 |         # For this test, let's have Beta take it NOW.
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0992388Z 168 |         res_beta = await client.call_tool(
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0992862Z     |
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0993171Z help: Remove trailing whitespace
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0993451Z 
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0993576Z Found 1 error.
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.0993936Z [*] 1 fixable with the `--fix` option.
+Fast Tests (ubuntu)	Lint (ruff)	2026-01-31T08:59:57.1045100Z ##[error]Process completed with exit code 1.
+Fast Tests (ubuntu)	Post Checkout	﻿2026-01-31T08:59:57.1141580Z Post job cleanup.
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2080491Z [command]/usr/bin/git version
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2115881Z git version 2.52.0
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2163865Z Temporarily overriding HOME='/home/runner/work/_temp/b2773d60-c336-4dc2-820d-ae3ed547cadd' before making global git config changes
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2165532Z Adding repository directory to the temporary git global config as a safe directory
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2169085Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mcp_agent_mail/mcp_agent_mail
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2203333Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2235117Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2466463Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2486467Z http.https://github.com/.extraheader
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2498831Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2530289Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2751050Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Fast Tests (ubuntu)	Post Checkout	2026-01-31T08:59:57.2780532Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Fast Tests (ubuntu)	Complete job	﻿2026-01-31T08:59:57.3112032Z Cleaning up orphan processes
