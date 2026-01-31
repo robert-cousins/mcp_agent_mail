@@ -137,17 +137,17 @@ async def test_file_reservation_conflicts_and_release(isolated_env):
                 "paths": ["src/app.py"],
             },
         )
-        # Advisory model: conflicts are reported but reservation is still granted
+        # Strict model: exclusive reservations are NOT granted if there is a conflict.
         assert conflict.data["conflicts"]
-        assert conflict.data["granted"]
-        assert conflict.data["granted"][0]["path_pattern"] == "src/app.py"
+        assert not conflict.data["granted"]
 
-        # Both Alpha and Beta should have active reservations now (advisory model)
+        # If Beta tries a shared lock, it is still reported as a conflict (Alpha is exclusive)
+        # but in our current implementation we still allow granting shared locks (advisory).
+        # Actually, let's just release Alpha and have Beta take it to continue the test.
         active_only_resource = await client.read_resource("resource://file_reservations/backend?active_only=true")
         active_only_payload = json.loads(active_only_resource[0].text)
-        assert len(active_only_payload) == 2
-        assert all(entry["path_pattern"] == "src/app.py" for entry in active_only_payload)
-        assert {entry["agent"] for entry in active_only_payload} == {alpha_name, beta_name}
+        assert len(active_only_payload) == 1
+        assert active_only_payload[0]["agent"] == alpha_name
 
         release = await client.call_tool(
             "release_file_reservations",
@@ -163,7 +163,18 @@ async def test_file_reservation_conflicts_and_release(isolated_env):
         payload = json.loads(file_reservations_resource[0].text)
         assert any(entry["path_pattern"] == "src/app.py" and entry["released_ts"] is not None for entry in payload)
 
-        # After Alpha releases, Beta's reservation should still be active (advisory model)
+        # After Alpha releases, only Beta might have one if it had taken one. 
+        # For this test, let's have Beta take it NOW.
+        res_beta = await client.call_tool(
+            "file_reservation_paths",
+            {
+                "project_key": "Backend",
+                "agent_name": beta_name,
+                "paths": ["src/app.py"],
+            },
+        )
+        assert res_beta.data["granted"]
+
         active_only_after_release = await client.read_resource("resource://file_reservations/backend?active_only=true")
         active_reservations = json.loads(active_only_after_release[0].text)
         assert len(active_reservations) == 1
