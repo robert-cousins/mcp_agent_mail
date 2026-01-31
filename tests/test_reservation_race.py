@@ -1,8 +1,10 @@
-
 import pytest
 from fastmcp import Client
+from sqlalchemy import text
+
 from mcp_agent_mail.app import build_mcp_server
 from mcp_agent_mail.db import get_session
+
 
 @pytest.mark.asyncio
 async def test_reproduce_granted_plus_conflicts(isolated_env):
@@ -44,18 +46,18 @@ async def test_reproduce_granted_plus_conflicts(isolated_env):
 
         # Expected BUG (per PearlCove): It is BOTH granted AND has conflicts
         # We want to eventually FIX this so it is NOT granted if there is a conflict.
-        
         has_granted = any(g["path_pattern"] == "conflict.txt" for g in res2.data.get("granted", []))
         has_conflict = any(c["path"] == "conflict.txt" for c in res2.data.get("conflicts", []))
-        
+
         assert has_conflict, "Should have reported a conflict"
         assert not has_granted, "BUG: Should NOT have granted a conflicting exclusive lock"
-        
+
         # Verify NO double-exclusive in DB
         async with get_session() as session:
-            from sqlalchemy import text
             result = await session.execute(
-                text("SELECT COUNT(*) FROM file_reservations WHERE path_pattern = 'conflict.txt' AND released_ts IS NULL")
+                text(
+                    "SELECT COUNT(*) FROM file_reservations WHERE path_pattern = 'conflict.txt' AND released_ts IS NULL"
+                )
             )
             count = result.scalar()
             assert count == 1, f"BUG: Should have exactly ONE active reservation in DB, found {count}"
