@@ -119,7 +119,7 @@ def ci_gate(
         if status == "completed":
             if conclusion == require_conclusion:
                 continue
-            if conclusion == "skipped" and name in allowed_skipped:
+            if conclusion == "skipped" and any(name.startswith(s) for s in allowed_skipped):
                 continue
             failed.append({
                 "name": name,
