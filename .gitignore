@@ -262,3 +262,9 @@ rustc-ice-*.txt
 *.snap.new
 sweep_*.png
 test_screenshot.png
+
+# Debug artifacts
+ci_log.txt
+tools_list.json
+inbox_check.json
+inbox_check_round*.json
