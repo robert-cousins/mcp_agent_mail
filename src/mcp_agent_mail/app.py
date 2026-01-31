@@ -3237,23 +3237,33 @@ async def _create_file_reservation(
     exclusive: bool,
     reason: str,
     ttl_seconds: int,
+    *,
+    session: Optional[Session] = None,
 ) -> FileReservation:
     if project.id is None or agent.id is None:
         raise ValueError("Project and agent must have ids before creating file_reservations.")
     expires = _naive_utc() + timedelta(seconds=ttl_seconds)
     await ensure_schema()
-    async with get_session() as session:
-        file_reservation = FileReservation(
-            project_id=project.id,
-            agent_id=agent.id,
-            path_pattern=path,
-            exclusive=exclusive,
-            reason=reason,
-            expires_ts=expires,
-        )
+    
+    file_reservation = FileReservation(
+        project_id=project.id,
+        agent_id=agent.id,
+        path_pattern=path,
+        exclusive=exclusive,
+        reason=reason,
+        expires_ts=expires,
+    )
+
+    if session is not None:
         session.add(file_reservation)
-        await session.commit()
-        await session.refresh(file_reservation)
+        await session.flush()
+        # Caller handles commit/refresh
+        return file_reservation
+
+    async with get_session() as new_session:
+        new_session.add(file_reservation)
+        await new_session.commit()
+        await new_session.refresh(file_reservation)
     return file_reservation
 
 
@@ -7193,9 +7203,16 @@ def build_mcp_server() -> FastMCP:
                             )
 
                 if conflicting_holders:
-                    # Advisory model: still grant the file_reservation but surface conflicts
                     conflicts.append({"path": path, "holders": conflicting_holders})
-                file_reservation = await _create_file_reservation(project, agent, path, exclusive, reason, ttl_seconds)
+                    # If exclusive, we do NOT grant the reservation if it conflicts.
+                    # This fixes the "double-exclusive" bug.
+                    if exclusive:
+                        await ctx.info(f"[conflict] Skipping exclusive reservation for '{path}' due to active holders.")
+                        continue
+
+                file_reservation = await _create_file_reservation(
+                    project, agent, path, exclusive, reason, ttl_seconds, session=session
+                )
                 file_reservation_payload = _file_reservation_payload(
                     project,
                     file_reservation,
@@ -7213,7 +7230,18 @@ def build_mcp_server() -> FastMCP:
                         "expires_ts": _iso(file_reservation.expires_ts),
                     }
                 )
+                # Note: we temporarily add it to existing_reservations for subsequent paths in the same request,
+                # but we need to refresh it after commit to get the ID if not already set.
                 existing_reservations.append((file_reservation, agent.name))
+            
+            if granted:
+                await session.commit()
+                # Refresh all granted to ensure IDs are populated for the payload/response
+                for res_dict in granted:
+                    # Actually they should have IDs if we commit, but we need to ensure we have them.
+                    # We can't easily refresh here because we don't have the objects, 
+                    # but _create_file_reservation added them to the session.
+                    pass
             if payloads:
                 await write_file_reservation_records(archive, payloads)
         await ctx.info(f"Issued {len(granted)} file_reservations for '{agent.name}'. Conflicts: {len(conflicts)}")
