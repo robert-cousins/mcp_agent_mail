@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import NoResultFound
+from sse_starlette.sse import EventSourceResponse
 from starlette.types import Receive, Scope, Send
 
 from .app import (
@@ -34,6 +35,7 @@ from .app import (
 )
 from .config import Settings, get_settings
 from .db import ensure_schema, get_session
+from .sse import get_broadcaster
 from .storage import (
     archive_write_lock,
     collect_lock_status,
@@ -1089,6 +1091,20 @@ def build_http_app(settings: Settings, server=None) -> FastAPI:
     @fastapi_app.get("/.well-known/oauth-authorization-server/mcp")
     async def oauth_meta_root_mcp() -> JSONResponse:
         return JSONResponse({"mcp_oauth": False})
+
+    @fastapi_app.get("/sse/events")
+    async def sse_events(project_slug: str, agent_name: str, request: Request) -> EventSourceResponse:
+        """Subscribe to real-time notification events."""
+        broadcaster = get_broadcaster()
+
+        async def event_generator():
+            async for event in broadcaster.subscribe(project_slug, agent_name):
+                yield {
+                    "event": "message",
+                    "data": event.to_json(),
+                }
+
+        return EventSourceResponse(event_generator())
 
     # Thin ASGI wrapper that fixes Accept/Content-Type headers before delegating
     # to the SDK's built-in Starlette MCP app.  The SDK's

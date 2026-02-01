@@ -38,6 +38,7 @@ from git.objects.tree import Tree
 from PIL import Image
 
 from .config import Settings
+from .sse import broadcast_notification
 from .utils import validate_thread_id_format
 
 _logger = logging.getLogger(__name__)
@@ -3109,6 +3110,13 @@ async def emit_notification_signal(
 
     try:
         await _to_thread(_write_signal)
+        # Also broadcast via SSE (fire-and-forget-ish, but awaited to ensure queue put)
+        await broadcast_notification(
+            project_slug=project_slug,
+            agent_name=agent_name,
+            timestamp=signal_data["timestamp"],
+            message_metadata=signal_data.get("message"),
+        )
         return True
     except Exception:
         # Signal emission is best-effort; don't fail message delivery
