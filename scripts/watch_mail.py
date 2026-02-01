@@ -27,6 +27,17 @@ Notification Features
                     AM_PROJECT, AM_AGENT, AM_MESSAGE_ID,
                     AM_FROM, AM_SUBJECT, AM_IMPORTANCE
 
+--buffer-file PATH  Update a local markdown file with a summary of pending
+                    notifications. This allows agents to 'see' unread mail
+                    by checking this file at the start of their turn.
+
+--sentinel-file PATH  Write a JSON sentinel file on each notification.
+                      A PreToolUse hook (check_notifications.sh) reads this
+                      file and injects "you have mail" into the agent's
+                      context before every tool call.  The hook consumes
+                      (deletes) the file after reading, so the agent is
+                      only notified once per message.
+
 Examples
 --------
 Run as a terminal sidecar with alerts + auto-fetch::
@@ -43,6 +54,14 @@ Fire a custom hook on each notification::
         --method sse --project my-project --agent MyAgent \\
         --url http://127.0.0.1:8765 --token "$TOKEN" \\
         --on-notify 'notify-send "New mail from $AM_FROM: $AM_SUBJECT"'
+
+Bridge notifications into Claude Code agent context via sentinel::
+
+    uv run python scripts/watch_mail.py \\
+        --method sse --project data-projects-mcp-agent-mail \\
+        --agent SapphireOtter --url http://127.0.0.1:8765 \\
+        --token "$HTTP_BEARER_TOKEN" \\
+        --dev-notify --sentinel-file /tmp/mcp-mail-pending-SapphireOtter.json
 
 Run with file-polling fallback (no SSE dependency)::
 
@@ -193,6 +212,58 @@ def _run_on_notify(command: str, project: str, agent: str, data: dict) -> None:
         console.print(f"[red]on-notify hook error:[/red] {e}")
 
 
+def _update_buffer_file(path: str, project: str, agent: str, data: dict) -> None:
+    """Update a markdown buffer file with the latest notification summary."""
+    msg = data.get("message") or {}
+    msg_id = msg.get("id", "?")
+    sender = msg.get("from", "unknown")
+    subject = msg.get("subject", "(no subject)")
+    importance = msg.get("importance", "normal")
+    ts = data.get("timestamp", "unknown")
+
+    p = Path(path)
+    header = (
+        "# 🔔 Pending Agent Mail\n\n"
+        "*This file is automatically maintained by the watch_mail.py sidecar. "
+        "Agents should check this file at the start of every session.*\n\n"
+        "| Project | From | Subject | Importance | Received | ID |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    )
+
+    row = f"| {project} | {sender} | {subject} | {importance} | {ts} | {msg_id} |\n"
+
+    try:
+        if not p.exists():
+            p.write_text(header + row, encoding="utf-8")
+        else:
+            lines = p.read_text(encoding="utf-8").splitlines()
+            # If the file exists but doesn't have our header, just overwrite
+            if not lines or "# 🔔 Pending Agent Mail" not in lines[0]:
+                p.write_text(header + row, encoding="utf-8")
+            else:
+                # Add as new row if not already present
+                if row not in lines:
+                    p.write_text("\n".join(lines) + "\n" + row, encoding="utf-8")
+    except Exception as e:
+        console.print(f"[red]buffer-file update error:[/red] {e}")
+
+
+def _write_sentinel(path: str, data: dict) -> None:
+    """Write a JSON sentinel file for the PreToolUse hook to pick up."""
+    msg = data.get("message") or {}
+    sentinel = {
+        "id": msg.get("id", ""),
+        "from": msg.get("from", ""),
+        "subject": msg.get("subject", ""),
+        "importance": msg.get("importance", "normal"),
+        "timestamp": data.get("timestamp", ""),
+    }
+    try:
+        Path(path).write_text(json.dumps(sentinel), encoding="utf-8")
+    except Exception as e:
+        console.print(f"[red]sentinel-file write error:[/red] {e}")
+
+
 async def _handle_event(
     data: dict,
     project: str,
@@ -200,6 +271,8 @@ async def _handle_event(
     dev_notify: bool,
     auto_fetch: bool,
     on_notify: Optional[str],
+    buffer_file: Optional[str],
+    sentinel_file: Optional[str],
     url: str,
     token: Optional[str],
     show_body: bool,
@@ -213,7 +286,7 @@ async def _handle_event(
         return
 
     # Always print the raw signal if no specific action is enabled
-    if not (dev_notify or auto_fetch or on_notify):
+    if not (dev_notify or auto_fetch or on_notify or buffer_file or sentinel_file):
         console.print(f"[bold green]New Signal:[/bold green] {data}")
         return
 
@@ -225,6 +298,12 @@ async def _handle_event(
 
     if on_notify:
         _run_on_notify(on_notify, project, agent, data)
+
+    if buffer_file:
+        _update_buffer_file(buffer_file, project, agent, data)
+
+    if sentinel_file:
+        _write_sentinel(sentinel_file, data)
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +329,8 @@ async def _watch_file_polling(
     dev_notify: bool,
     auto_fetch: bool,
     on_notify: Optional[str],
+    buffer_file: Optional[str],
+    sentinel_file: Optional[str],
     url: str,
     token: Optional[str],
     show_body: bool,
@@ -272,8 +353,8 @@ async def _watch_file_polling(
                     data = json.loads(content)
                     await _handle_event(
                         data, project_slug, agent_name,
-                        dev_notify, auto_fetch, on_notify,
-                        url, token, show_body,
+                        dev_notify, auto_fetch, on_notify, buffer_file,
+                        sentinel_file, url, token, show_body,
                     )
                 except Exception as e:
                     console.print(f"[red]Error reading signal file:[/red] {e}")
@@ -289,6 +370,8 @@ async def _watch_sse(
     dev_notify: bool,
     auto_fetch: bool,
     on_notify: Optional[str],
+    buffer_file: Optional[str],
+    sentinel_file: Optional[str],
     show_body: bool,
 ):
     """Watch via SSE."""
@@ -326,8 +409,8 @@ async def _watch_sse(
                             data = json.loads(data_str)
                             await _handle_event(
                                 data, project_slug, agent_name,
-                                dev_notify, auto_fetch, on_notify,
-                                url, token, show_body,
+                                dev_notify, auto_fetch, on_notify, buffer_file,
+                                sentinel_file, url, token, show_body,
                             )
                         except json.JSONDecodeError:
                             console.print(f"[yellow]Invalid JSON in SSE:[/yellow] {data_str}")
@@ -358,6 +441,8 @@ def main(
     auto_fetch: Annotated[bool, typer.Option("--auto-fetch", help="Fetch and print latest message on notification")] = False,
     show_body: Annotated[bool, typer.Option("--show-body", help="Include message body in auto-fetch output")] = False,
     on_notify: Annotated[Optional[str], typer.Option("--on-notify", help="Shell command to run on notification (env: AM_PROJECT, AM_AGENT, AM_MESSAGE_ID, AM_FROM, AM_SUBJECT, AM_IMPORTANCE)")] = None,
+    buffer_file: Annotated[Optional[str], typer.Option("--buffer-file", help="Path to a markdown file to update with pending notification summary")] = None,
+    sentinel_file: Annotated[Optional[str], typer.Option("--sentinel-file", help="Path to JSON sentinel file for PreToolUse hook integration (consumed on read by check_notifications.sh)")] = None,
 ):
     """
     Watch for new mail notifications and react with alerts, fetches, or hooks.
@@ -368,14 +453,14 @@ def main(
     if method == "file":
         asyncio.run(_watch_file_polling(
             project, agent, interval,
-            dev_notify, auto_fetch, on_notify,
-            url, token, show_body,
+            dev_notify, auto_fetch, on_notify, buffer_file,
+            sentinel_file, url, token, show_body,
         ))
     elif method == "sse":
         asyncio.run(_watch_sse(
             project, agent, url, token,
-            dev_notify, auto_fetch, on_notify,
-            show_body,
+            dev_notify, auto_fetch, on_notify, buffer_file,
+            sentinel_file, show_body,
         ))
     else:
         console.print(f"[red]Unknown method: {method}[/red]")
