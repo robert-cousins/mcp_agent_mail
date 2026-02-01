@@ -99,6 +99,34 @@ Macros vs granular tools
 - Prefer macros when you want speed or are on a smaller model: `macro_start_session`, `macro_prepare_thread`, `macro_file_reservation_cycle`, `macro_contact_handshake`.
 - Use granular tools when you need control: `register_agent`, `file_reservation_paths`, `send_message`, `fetch_inbox`, `acknowledge_message`.
 
+### Real-time notification awareness
+
+Agents are request-response based and cannot receive mid-turn interrupts. To stay aware of incoming mail without constant polling, use the **notification buffer**:
+
+1. **Check `PENDING_NOTIFICATIONS.md` at session start**
+   - Location: project root (`.gitignore`d)
+   - Auto-maintained by `watch_mail.py --buffer-file PENDING_NOTIFICATIONS.md`
+   - Contains a markdown table: `| Agent | Project | From | Subject | Importance | Time | ID |`
+
+2. **Priority handling**
+   - High-importance messages should be addressed before other work
+   - After reading, fetch full messages via `fetch_inbox` and acknowledge
+
+3. **Running the watcher** (in a separate terminal or as IDE task):
+   ```bash
+   uv run python scripts/watch_mail.py \
+     --method sse \
+     --project <project-slug> \
+     --agent <YourAgentName> \
+     --url http://127.0.0.1:8765 \
+     --buffer-file PENDING_NOTIFICATIONS.md \
+     --dev-notify --auto-fetch
+   ```
+
+4. **Clearing the buffer**
+   - Rows are cleared after inbox is processed/acknowledged
+   - Or manually delete the file once caught up
+
 ### Worktree recipes (opt-in, non-disruptive)
 
 - Enable gated features:
