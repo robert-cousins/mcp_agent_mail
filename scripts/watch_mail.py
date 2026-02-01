@@ -226,11 +226,11 @@ def _update_buffer_file(path: str, project: str, agent: str, data: dict) -> None
         "# 🔔 Pending Agent Mail\n\n"
         "*This file is automatically maintained by the watch_mail.py sidecar. "
         "Agents should check this file at the start of every session.*\n\n"
-        "| Project | From | Subject | Importance | Received | ID |\n"
-        "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
+        "| Agent | Project | From | Subject | Importance | Received | ID |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
     )
 
-    row = f"| {project} | {sender} | {subject} | {importance} | {ts} | {msg_id} |\n"
+    row = f"| {agent} | {project} | {sender} | {subject} | {importance} | {ts} | {msg_id} |\n"
 
     try:
         if not p.exists():
