@@ -5,9 +5,10 @@ A simple HTTP server that bridges requests from Claude's bash to the MCP agent-m
 Run this in WSL: python3 ~/projects/mcp_agent_mail/http_bridge.py
 """
 
-from flask import Flask, request, jsonify
-import subprocess
 import json
+import subprocess
+
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -24,14 +25,14 @@ def call_mcp(method: str, params: dict) -> dict:
         "method": method,
         "params": params
     }
-    
+
     cmd = [
         "curl", "-s", "-X", "POST", MCP_URL,
         "-H", "Content-Type: application/json",
         "-H", f"Authorization: Bearer {BEARER_TOKEN}",
         "-d", json.dumps(payload)
     ]
-    
+
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
@@ -58,17 +59,17 @@ def ensure_project():
 def register():
     """Register as an agent"""
     data = request.get_json() or {}
-    
+
     args = {
         "project_key": PROJECT_KEY,
         "program": data.get('program', 'claude-desktop'),
         "model": data.get('model', 'claude-sonnet-4'),
         "task_description": data.get('task_description', 'AI Assistant')
     }
-    
+
     if data.get('agent_name'):
         args['agent_name'] = data['agent_name']
-    
+
     response = call_mcp("tools/call", {
         "name": "register_agent",
         "arguments": args
@@ -86,7 +87,7 @@ def discover():
 def send_message():
     """Send a message"""
     data = request.get_json()
-    
+
     response = call_mcp("tools/call", {
         "name": "send_message",
         "arguments": {
@@ -103,7 +104,7 @@ def send_message():
 def check_messages():
     """Check messages"""
     data = request.get_json()
-    
+
     response = call_mcp("tools/call", {
         "name": "check_messages",
         "arguments": {
