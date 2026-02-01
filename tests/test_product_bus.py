@@ -27,6 +27,9 @@ def _tool_data(result: Any) -> Any:
 async def test_ensure_product_and_link_project(tmp_path, monkeypatch) -> None:
     # Enable gated features for product bus
     monkeypatch.setenv("WORKTREES_ENABLED", "1")
+    # Disable ephemeral path rejection (test uses tmp_path)
+    monkeypatch.setenv("PROJECT_REJECT_EPHEMERAL_PATHS", "false")
+    monkeypatch.setenv("PROJECT_WARN_NONEXISTENT_PATHS", "false")
     clear_settings_cache()
     reset_database_state()
     await ensure_schema()

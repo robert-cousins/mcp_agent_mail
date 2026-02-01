@@ -247,6 +247,14 @@ class Settings:
     messaging_auto_register_recipients: bool
     # When true, attempt a contact handshake automatically if delivery is blocked
     messaging_auto_handshake_on_block: bool
+    # Project path validation
+    # Comma-separated list of allowed root directories for project paths (expanduser applied)
+    # Empty means allow all paths. Example: "~/projects,/data/projects"
+    project_allowed_roots: list[str]
+    # When true, reject paths under /tmp or containing pytest patterns
+    project_reject_ephemeral_paths: bool
+    # When true, log a warning if the project path does not exist on disk
+    project_warn_nonexistent_paths: bool
 
 
 def _bool(value: str, *, default: bool) -> bool:
@@ -458,6 +466,9 @@ def get_settings() -> Settings:
         agent_name_enforcement_mode=_agent_name_mode(_decouple_config("AGENT_NAME_ENFORCEMENT_MODE", default="coerce")),
         messaging_auto_register_recipients=_bool(_decouple_config("MESSAGING_AUTO_REGISTER_RECIPIENTS", default="true"), default=True),
         messaging_auto_handshake_on_block=_bool(_decouple_config("MESSAGING_AUTO_HANDSHAKE_ON_BLOCK", default="true"), default=True),
+        project_allowed_roots=_csv("PROJECT_ALLOWED_ROOTS", default=""),
+        project_reject_ephemeral_paths=_bool(_decouple_config("PROJECT_REJECT_EPHEMERAL_PATHS", default="true"), default=True),
+        project_warn_nonexistent_paths=_bool(_decouple_config("PROJECT_WARN_NONEXISTENT_PATHS", default="true"), default=True),
     )
 
 
