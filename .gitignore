@@ -268,3 +268,7 @@ ci_log.txt
 tools_list.json
 inbox_check.json
 inbox_check_round*.json
+
+# Local development scripts (not part of project)
+http_bridge.py
+scripts/a_testagentmail.sh
