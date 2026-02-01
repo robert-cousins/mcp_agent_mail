@@ -110,6 +110,9 @@ def isolated_env(tmp_path, monkeypatch):
     monkeypatch.setenv("GIT_AUTHOR_NAME", "test-agent")
     monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@example.com")
     monkeypatch.setenv("INLINE_IMAGE_MAX_BYTES", "128")
+    # Disable ephemeral path rejection in tests (tests use tmp_path fixtures)
+    monkeypatch.setenv("PROJECT_REJECT_EPHEMERAL_PATHS", "false")
+    monkeypatch.setenv("PROJECT_WARN_NONEXISTENT_PATHS", "false")
     clear_settings_cache()
     reset_database_state()
     # Clear repo cache before test to ensure isolation

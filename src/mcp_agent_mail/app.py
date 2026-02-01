@@ -2113,11 +2113,78 @@ def _resolve_project_identity(human_key: str) -> dict[str, Any]:
     return payload
 
 
+def _canonicalize_human_key(human_key: str) -> str:
+    """Canonicalize a human_key path: expanduser + resolve symlinks."""
+    return str(Path(human_key).expanduser().resolve())
+
+
+def _is_ephemeral_path(path: str) -> bool:
+    """Check if a path is ephemeral (temp directory or pytest artifact)."""
+    path_lower = path.lower()
+    ephemeral_patterns = [
+        "/tmp/",
+        "/tmp",
+        "/var/tmp/",
+        "/var/tmp",
+        "pytest",
+        "/temp/",
+        "/temp",
+    ]
+    return any(pattern in path_lower for pattern in ephemeral_patterns)
+
+
+def _validate_project_path(human_key: str, settings: Settings) -> None:
+    """Validate a project path against configured rules.
+
+    Raises ValueError if the path is not allowed.
+    """
+    # Check ephemeral paths
+    if settings.project_reject_ephemeral_paths and _is_ephemeral_path(human_key):
+        raise ValueError(
+            f"Ephemeral paths are not allowed for projects: '{human_key}'. "
+            "Temp directories and pytest artifacts are rejected to prevent project list pollution. "
+            "Set PROJECT_REJECT_EPHEMERAL_PATHS=false to disable this check."
+        )
+
+    # Check allowlist if configured
+    allowed_roots = settings.project_allowed_roots
+    if allowed_roots:
+        canonical_path = Path(human_key)
+        allowed = False
+        for root in allowed_roots:
+            root_path = Path(root).expanduser().resolve()
+            try:
+                canonical_path.relative_to(root_path)
+                allowed = True
+                break
+            except ValueError:
+                continue
+        if not allowed:
+            roots_str = ", ".join(allowed_roots)
+            raise ValueError(
+                f"Project path '{human_key}' is not under any allowed root directory. "
+                f"Allowed roots: {roots_str}. "
+                "Configure PROJECT_ALLOWED_ROOTS to add more allowed directories."
+            )
+
+    # Warn if path doesn't exist
+    if settings.project_warn_nonexistent_paths and not Path(human_key).exists():
+        logger.warning(
+            "Project path does not exist on disk: '%s'. "
+            "This may indicate the path is from a different machine or environment.",
+            human_key,
+        )
+
+
 async def _ensure_project(human_key: str) -> Project:
     await ensure_schema()
-    # Resolve symlinks to canonical path so /dp/ntm and /data/projects/ntm
-    # resolve to the same project identity
-    human_key = str(Path(human_key).resolve())
+    # Canonicalize: expanduser + resolve symlinks so ~/projects/x and /home/user/projects/x
+    # and symlinks like /dp/ntm and /data/projects/ntm resolve to the same project identity
+    human_key = _canonicalize_human_key(human_key)
+
+    # Validate path against configured rules
+    settings = get_settings()
+    _validate_project_path(human_key, settings)
     slug = _compute_project_slug(human_key)
     for attempt in range(6):
         try:
