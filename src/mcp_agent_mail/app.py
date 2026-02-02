@@ -3884,7 +3884,7 @@ async def _list_inbox(
                 cast(Any, Message.project_id) == project.id,
                 MessageRecipient.agent_id == agent.id,
             )
-            .order_by(desc(Message.created_ts))
+            .order_by(desc(Message.id))
             .limit(limit)
         )
         if urgent_only:

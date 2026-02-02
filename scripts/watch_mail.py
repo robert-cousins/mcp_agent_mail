@@ -384,46 +384,58 @@ async def _watch_sse(
     timeout = httpx.Timeout(connect=10.0, read=None, write=10.0, pool=None)
     retry_delay = 1.0
 
-    while True:
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as client, client.stream(
-                "GET",
-                f"{url}/sse/events",
-                params={"project_slug": project_slug, "agent_name": agent_name},
-                headers=headers,
-            ) as response:
-                if response.status_code != 200:
-                    console.print(f"[red]SSE connection failed:[/red] {response.status_code}")
-                    await asyncio.sleep(retry_delay)
-                    continue
+    async def heartbeat():
+        while True:
+            await asyncio.sleep(60)
+            console.print(f"[dim][heartbeat] SSE watcher alive for {agent_name} in {project_slug}[/dim]")
 
-                console.print("[green]Connected to SSE stream.[/green]")
-                retry_delay = 1.0
-
-                async for line in response.aiter_lines():
-                    if not line:
+    heartbeat_task = asyncio.create_task(heartbeat())
+    try:
+        while True:
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client, client.stream(
+                    "GET",
+                    f"{url}/sse/events",
+                    params={"project_slug": project_slug, "agent_name": agent_name},
+                    headers=headers,
+                ) as response:
+                    if response.status_code != 200:
+                        console.print(f"[red]SSE connection failed:[/red] {response.status_code}")
+                        await asyncio.sleep(retry_delay)
+                        retry_delay = min(60.0, retry_delay * 1.5)
                         continue
-                    if line.startswith("data: "):
-                        data_str = line[6:]
-                        try:
-                            data = json.loads(data_str)
-                            await _handle_event(
-                                data, project_slug, agent_name,
-                                dev_notify, auto_fetch, on_notify, buffer_file,
-                                sentinel_file, url, token, show_body,
-                            )
-                        except json.JSONDecodeError:
-                            console.print(f"[yellow]Invalid JSON in SSE:[/yellow] {data_str}")
 
-        except httpx.RemoteProtocolError:
-            console.print("[yellow]Server disconnected, reconnecting...[/yellow]")
-        except httpx.ConnectError:
-            console.print(f"[red]Connection failed. Retrying in {retry_delay}s...[/red]")
-        except Exception as e:
-            console.print(f"[red]SSE Error:[/red] {e}")
+                    console.print("[green]Connected to SSE stream.[/green]")
+                    retry_delay = 1.0  # Reset on success
 
-        await asyncio.sleep(retry_delay)
-        retry_delay = min(30.0, retry_delay * 1.5)
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            data_str = line[6:]
+                            try:
+                                data = json.loads(data_str)
+                                await _handle_event(
+                                    data, project_slug, agent_name,
+                                    dev_notify, auto_fetch, on_notify, buffer_file,
+                                    sentinel_file, url, token, show_body,
+                                )
+                            except json.JSONDecodeError:
+                                console.print(f"[yellow]Invalid JSON in SSE:[/yellow] {data_str}")
+                        elif line.startswith(":"):  # Keepalive comment
+                            pass
+
+            except (httpx.RemoteProtocolError, httpx.ReadError):
+                console.print("[yellow]SSE Stream disconnected, reconnecting...[/yellow]")
+            except httpx.ConnectError:
+                console.print(f"[red]Connection failed. Retrying in {retry_delay:.1f}s...[/red]")
+            except Exception as e:
+                console.print(f"[red]SSE Error:[/red] {type(e).__name__}: {e}")
+
+            await asyncio.sleep(retry_delay)
+            retry_delay = min(60.0, retry_delay * 1.5)
+    finally:
+        heartbeat_task.cancel()
 
 
 # ---------------------------------------------------------------------------
