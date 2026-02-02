@@ -1,0 +1,57 @@
+# MCP Agent Mail Watcher - Systemd User Service Template
+#
+# This is a systemd user service template for running per-agent watchers.
+# The %i (instance) parameter is the agent name.
+#
+# Installation:
+#   mkdir -p ~/.config/systemd/user
+#   cp mcp-agent-mail-watcher@.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#
+# Usage:
+#   systemctl --user start mcp-agent-mail-watcher@OrangeWolf
+#   systemctl --user enable mcp-agent-mail-watcher@OrangeWolf  # auto-start on login
+#   systemctl --user status mcp-agent-mail-watcher@OrangeWolf
+#   journalctl --user -u mcp-agent-mail-watcher@OrangeWolf -f  # view logs
+#
+# Configuration:
+#   Edit ~/.config/mcp-agent-mail/watcher.env to set:
+#     - PROJECT_SLUG
+#     - SERVER_URL
+#     - HTTP_BEARER_TOKEN (if auth enabled)
+
+[Unit]
+Description=MCP Agent Mail Watcher for %i
+After=network.target
+
+[Service]
+Type=simple
+Environment="PROJECT_SLUG=data-projects-mcp-agent-mail"
+Environment="SERVER_URL=http://127.0.0.1:8765"
+Environment="REPO_PATH=%h/projects/mcp_agent_mail"
+EnvironmentFile=-%h/.config/mcp-agent-mail/watcher.env
+
+ExecStart=%h/projects/mcp_agent_mail/.venv/bin/python \
+    %h/projects/mcp_agent_mail/scripts/watch_mail.py \
+    --method sse \
+    --project ${PROJECT_SLUG} \
+    --agent %i \
+    --url ${SERVER_URL} \
+    --buffer-file %h/projects/mcp_agent_mail/PENDING_NOTIFICATIONS.md \
+    --sentinel-file /tmp/mcp-mail-pending-%i.json \
+    --dev-notify \
+    --auto-fetch \
+    --show-body
+
+# Restart on failure with exponential backoff
+Restart=on-failure
+RestartSec=5
+RestartMaxDelaySec=300
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcp-watcher-%i
+
+[Install]
+WantedBy=default.target
